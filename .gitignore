@@ -1,95 +1,61 @@
-# Byte-compiled / optimized / DLL files
-data/
-__pycache__/
-*.py[cod]
-*$py.class
+# --- Node.js / npm / Wrangler ---
+# Dependencies (reinstallable via npm install)
+node_modules/
+
+# Wrangler local development state and secrets
+.wrangler/
 .dev.vars
-# C extensions
-*.so
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# Logs
+npm-debug.log*
+yarn-error.log
+*.log
 
-# PyInstaller
-# Usually dist/ *.spec
+# --- Data Files ---
+# Ignore large data files that should be stored elsewhere (like R2)
+# Be specific if possible
+data_residential.geojson
+full_data.parquet
+# Or if you keep all data in a specific folder:
+# /data/
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
+# --- Operating System Files ---
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Translations
-*.mo
-*.pot
+# --- IDE / Editor Configuration ---
+# VS Code
+.vscode/
+# JetBrains (IntelliJ, PyCharm, WebStorm, etc.)
+.idea/
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+# Atom
+.atom/
+# Eclipse
+.project
+.settings/
+.classpath
 
-# Flask specific files
-instance/
-.webassets-cache
-
-# Environment variables - VERY IMPORTANT!
-.env
-.env.*
-!.env.example
-
-# Virtual Environments
-.env/
+# --- Python Virtual Environments (If you have Python leftovers) ---
+venv/
 .venv/
 env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+*.pyc
+__pycache__/
+.env
 
-# IDE / Editor specific files
-.idea/
-.vscode/
-*.sublime-*
-*.DS_Store
-Thumbs.db
+# --- Build output / Temporary files (Add specific ones if needed) ---
+# dist/
+# build/
 
-# Fly.io specific
-fly.toml # Usually okay to commit, but ignore if you have sensitive defaults
-.fly/
-
-# SQLite databases (if used locally and not part of repo)
-*.sqlite
-*.sqlite3
-*.db
-
-# Other
-*.log
-local_settings.py # If you use this pattern
-
-# Data files if large or not meant for repo (adjust as needed)
-# data/ # Example if your data is large and managed elsewhere
+# --- Other ---
+# Add any other specific files or directories you don't want to track
