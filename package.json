@@ -7,10 +7,10 @@
     "deploy": "npx wrangler pages deploy public"
   },
   "devDependencies": {
-    "wrangler": "^4.9.1" // Or your installed version
+    "wrangler": "^4.9.1" 
   },
   "dependencies": {
-    "@duckdb/duckdb-wasm": "^1.28.1", // Ensure this line exists with a version
-    "itty-router": "^4.0.27"       // Ensure this line exists with a version
+    "@duckdb/duckdb-wasm": "^1.28.1", 
+    "itty-router": "^4.0.27"      
   }
 }
