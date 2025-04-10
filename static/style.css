@@ -1,0 +1,831 @@
+/* ===== style.css ===== */
+
+/* --- Base & Layout --- */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  color: #333;
+  background-color: #f0f2f5; /* Light background for the page */
+  display: flex; /* Use flexbox for main layout */
+  height: 100vh; /* Full viewport height */
+  overflow: hidden; /* Prevent body scroll */
+}
+
+.app-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  width: 420px; /* Slightly wider sidebar */
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
+  background: #ffffff; /* White background */
+  padding: 20px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); /* Softer shadow */
+  display: flex;
+  flex-direction: column;
+  gap: 25px; /* Space between sections */
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto; /* Ensure sidebar itself scrolls */
+  position: relative; /* Needed for sticky positioning context */
+  box-shadow: 3px 0 15px rgba(0, 0, 0, 0.15); /* Slightly stronger/larger shadow */
+}
+
+
+
+.app-title {
+  margin-bottom: 15px; /* Re-add margin if needed for spacing below */
+  margin: 0 0 15px;
+  font-size: 1.5rem; /* Larger title */
+  font-weight: 650;
+  color: #005f59;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+  position: sticky;
+  top: -20px; /* Stick to the top */
+  background-color: #ffffff; /* Match sidebar background */
+  z-index: 10; /* Ensure it stays above scrolling content */
+  
+}
+
+.form-section {
+  /* Your existing styles like padding, etc. */
+  padding: 15px;
+  background-color: #fdfdfd; /* Or #ffffff - MUST have a background color */
+  border-radius: 0px; /* Or your desired radius */
+
+  border-top: 1px solid #DADD60; /* Adjust width (2px) and color as needed */
+}
+
+
+/* remove the border from the first section */
+.sidebar .form-section:first-child {
+  border-top: none;
+}
+
+
+
+
+.form-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 1.15rem;
+  color: #005f59; /* Darker teal */
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+label {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #444;
+}
+
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 10px 12px; /* More padding */
+  margin-bottom: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  background: #fff;
+  box-sizing: border-box; /* Include padding in width */
+  transition: border-color 0.2s ease;
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+  border-color: #76C4B5; /* Highlight focus */
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(118, 196, 181, 0.2);
+}
+
+textarea {
+    resize: vertical; /* Allow vertical resize only */
+    min-height: 50px;
+}
+
+.help-text {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: -10px;
+    margin-bottom: 10px;
+}
+
+/* --- Buttons --- */
+button.action-button, /* Includes Compare button */
+#generate-index,
+#generate-residential {
+  padding: 10px 15px;
+  border: 1px solid #76C4B5; /* Add border */
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #76C4B5; /* Default background */
+  color: #fff; /* Default text */
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  text-align: center;
+}
+button.action-button:hover,
+#generate-index:hover,
+#generate-residential:hover {
+  background-color: #63b3a3;
+  border-color: #529a8a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+/* Disabled state */
+button.action-button:disabled,
+#generate-index:disabled,
+#generate-residential:disabled {
+    background-color: #cccccc;
+    color: #666666;
+    border-color: #bbb; /* Match background */
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- Activated State for Generate Buttons --- */
+#generate-index.activated,
+#generate-residential.activated {
+    background-color: #ffffff; /* White background */
+    color: #395E57; /* Dark Green text */
+    border: 2px solid #395E57; /* Dark Green border */
+    font-weight: bold;
+}
+/* Keep activated style on hover */
+#generate-index.activated:hover,
+#generate-residential.activated:hover {
+    background-color: #ffffff;
+    color: #395E57;
+    border-color: #395E57;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+
+/* Layout for rows of buttons */
+.actions-row {
+  display: flex;
+  justify-content: space-between; /* Space out buttons */
+  gap: 10px;
+  margin-top: 15px;
+}
+.actions-row button {
+    flex: 1; /* Make buttons share space */
+}
+
+/* Layout for inline label and button (like Reset) */
+.actions-inline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
+.actions-inline label {
+    margin: 0; /* Remove default label margin */
+    font-weight: bold;
+}
+#reset-selection {
+    flex: 0 1 auto; /* Don't let reset button grow */
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    background-color: #f0f0f0; /* Lighter background for reset */
+    color: #333;
+    border: 1px solid #ccc;
+}
+#reset-selection:hover {
+    background-color: #e0e0e0;
+    border-color: #bbb;
+}
+
+/* Icon buttons (Table/Histogram) */
+.icons button {
+    background: none;
+    border: none;
+    font-size: 1.3rem; /* Larger icons */
+    padding: 0 5px;
+    color: #555;
+    cursor: pointer;
+    vertical-align: middle;
+}
+.icons button:hover {
+    color: #000;
+}
+.icons button:disabled {
+    color: #bbb;
+    cursor: not-allowed;
+}
+
+.current-var-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #f7f7f7;
+    border-radius: 4px;
+    border: 1px solid #eee;
+}
+.current-var-actions span:first-child {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.index-chart-buttons {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+.index-chart-buttons div {
+    text-align: center;
+}
+.index-chart-buttons span {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 5px;
+    color: #666;
+}
+
+
+/* --- Variable Selection (Index Creation) --- */
+.variable-selection-dropdowns {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.variable-selection-dropdowns > div {
+    flex: 1;
+}
+.multi-select-vars {
+    width: 100%;
+    height: 150px; /* Adjust height as needed */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 5px;
+    font-size: 0.9rem;
+    background-color: #fff;
+    overflow-y: auto; /* Ensure scrollbar appears */
+}
+.multi-select-vars option {
+    padding: 5px 8px; /* More padding */
+    cursor: pointer;
+    border-bottom: 1px solid #eee; /* Separator */
+}
+.multi-select-vars option:last-child {
+    border-bottom: none;
+}
+.multi-select-vars option:hover {
+    background-color: #f0f8ff; /* Light blue hover */
+}
+/* Style for selected options (browser default often handles this well) */
+.multi-select-vars option:checked {
+    background-color: #a8dadc; /* Light teal selection */
+    color: #1d3557; /* Dark blue text */
+    font-weight: 500;
+}
+
+/* Box showing selected variables */
+.selected-box {
+  margin-top: 5px;
+  padding: 10px;
+  background: #eef1f6; /* Light blue-grey */
+  border-radius: 6px;
+  min-height: 40px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px; /* More gap */
+  border: 1px solid #ccd;
+}
+.selected-tag {
+  background: #ffffff; /* White background */
+  color: #395E57; /* Dark Green text */
+  border: 1px solid #395E57; /* Dark Green border */
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.1s, border-color 0.2s;
+  user-select: none;
+  display: flex;
+  align-items: center;
+}
+.selected-tag::after {
+    content: '✖';
+    font-size: 0.9em;
+    margin-left: 6px;
+    opacity: 0.7;
+    color: #395E57; /* Match text color */
+}
+/* Hover state for removal indication */
+.selected-tag:hover {
+  background: #e63946; /* Red background */
+  color: #ffffff; /* White text */
+  border-color: #e63946; /* Red border */
+  transform: scale(1.05);
+}
+.selected-tag:hover::after {
+    opacity: 1;
+    color: #ffffff; /* White X on hover */
+}
+
+/* --- Info Window & Results Panels --- */
+.info-window {
+  margin-top: 15px;
+  font-size: 0.9rem;
+  background: #f8f9fa; /* Very light grey */
+  border-left: 4px solid #76C4B5; /* Teal accent */
+  padding: 12px 15px; /* More padding */
+  border-radius: 4px;
+  color: #333;
+  line-height: 1.5; /* Better readability */
+  min-height: 30px; /* Ensure it has some height even when empty */
+}
+.info-window strong {
+  /* display: block; */ /* Removed - allow inline strong */
+  /* margin-bottom: 5px; */
+  color: #136A66; /* Darker teal */
+  font-weight: 600;
+}
+.info-window ul {
+    margin: 5px 0 0 0;
+    padding-left: 20px;
+    font-size: 0.85rem;
+}
+.info-window li {
+    margin-bottom: 3px;
+}
+
+/* --- Map Container & Map Views --- */
+.map-container {
+  flex: 1; /* Take remaining space */
+  height: 100%;
+  position: relative; /* For positioning back button */
+  background-color: #e5e5e5; /* Map background color */
+}
+
+.map-pane { /* Container for single map */
+  width: 100%;
+  height: 100%;
+}
+
+/* Comparison Map Styles */
+.map-compare {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background-color: #fff; /* White background for comparison */
+}
+.map-compare.hidden {
+  display: none !important; /* Ensure hidden class works */
+}
+
+.map-column {
+  flex: 1; /* Each map takes half the space */
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #ccc; /* Separator line */
+  position: relative; /* For map titles */
+}
+.map-column:first-child {
+    border-left: none;
+}
+
+.map-title {
+  text-align: center;
+  font-size: 1rem; /* Smaller title */
+  font-weight: 600;
+  margin: 0;
+  padding: 8px 0;
+  background: rgba(255, 255, 255, 0.85); /* Semi-transparent background */
+  border-bottom: 1px solid #eee;
+  z-index: 1000; /* Above map tiles */
+}
+
+.split-map {
+  flex: 1; /* Map div takes remaining height in column */
+  height: 100%; /* Ensure Leaflet calculates size correctly */
+  width: 100%;
+}
+
+/* Back Button for Comparison View */
+.back-button {
+  position: absolute;
+  top: 10px;
+  left: 10px; /* Position top-left */
+  z-index: 1500; /* Above map titles */
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  cursor: pointer;
+  font-weight: bold;
+  border-radius: 4px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+.back-button:hover {
+    background: #f5f5f5;
+}
+.back-button.hidden {
+  display: none !important;
+}
+/* --- Leaflet Legend --- */
+.leaflet-control-container .leaflet-control.info.legend {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 12px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+    line-height: 1.5; /* Increased line-height slightly */
+    font-size: 0.85rem;
+    /* Remove or comment out max-width if it exists */
+    /* max-width: 180px; */
+    white-space: nowrap; /* Prevent text from wrapping */
+}
+
+.leaflet-control-container .leaflet-control.info.legend strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 3px;
+    white-space: normal; /* Allow title to wrap if needed */
+}
+
+.leaflet-control-container .leaflet-control.info.legend i {
+    width: 18px;
+    height: 18px;
+    float: left; /* Keep float */
+    margin-right: 8px;
+    opacity: 0.7;
+    border: 1px solid #999;
+    vertical-align: middle; /* Helps alignment */
+}
+
+.leaflet-control-container .leaflet-control.info.legend span {
+    /* This span isn't explicitly in the JS, the text node is directly added. */
+    /* If you wrap the text in spans, you could style them */
+     display: inline-block; /* Helps alignment with floated icon */
+     vertical-align: middle;
+     line-height: 18px; /* Match icon height */
+}
+
+/* Add a clearing element if float causes issues (less common now) */
+.leaflet-control-container .leaflet-control.info.legend br {
+    clear: left; /* Ensure next line starts below floated icon */
+}
+/* --- Data Table Styling --- */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 0.85rem;
+}
+.data-table th, .data-table td {
+    border: 1px solid #ddd;
+    padding: 6px 8px;
+    text-align: left;
+}
+.data-table th {
+    background-color: #f2f2f2;
+    font-weight: 600;
+    position: sticky; /* Make header sticky within scrollable container */
+    top: 0;
+    z-index: 1;
+}
+.data-table tbody tr:nth-child(even) {
+    background-color: #f9f9f9; /* Zebra striping */
+}
+.data-table tbody tr:hover {
+    background-color: #eaf4ff; /* Highlight row on hover */
+}
+/* Style for race analysis table color swatch */
+.data-table td span[style*="background-color"] {
+    vertical-align: middle;
+}
+
+
+/* --- Checkbox Group (Race Selection) --- */
+.checkbox-group {
+    display: grid; /* Use grid for alignment */
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Responsive columns */
+    gap: 8px;
+    background-color: #f8f8f8;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #eee;
+    margin-top: 5px;
+}
+.checkbox-group label {
+    display: flex; /* Align checkbox and text */
+    align-items: center;
+    margin: 0; /* Reset label margin */
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.checkbox-group input[type="checkbox"] {
+    margin-right: 6px;
+    cursor: pointer;
+}
+
+
+/* --- Utility --- */
+.hidden {
+  display: none !important;
+}
+
+/* --- Responsive Considerations (Example) --- */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column; /* Stack sidebar and map on small screens */
+        overflow: auto; /* Allow scrolling on small screens */
+    }
+    .sidebar {
+        width: 100%; /* Full width */
+        height: auto; /* Auto height */
+        max-height: 50vh; /* Limit sidebar height */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border-right: none;
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .map-container {
+        height: auto; /* Auto height */
+        flex-grow: 1; /* Take remaining space */
+    }
+    .map-compare {
+        flex-direction: column; /* Stack comparison maps */
+    }
+    .map-column {
+        border-left: none;
+        border-top: 1px solid #ccc;
+    }
+     .map-column:first-child {
+        border-top: none;
+    }
+    .floating-panel {
+        width: 95vw;
+        bottom: 10px;
+        left: 2.5vw;
+        right: 2.5vw;
+        max-height: 40vh;
+    }
+}
+
+/* --- Add to style.css --- */
+.race-legend {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 12px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+.race-legend strong {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 3px;
+}
+.race-legend div {
+    margin-bottom: 3px;
+    display: flex; /* Align icon and text */
+    align-items: center;
+}
+.race-legend i {
+    width: 18px;
+    height: 10px; /* Make it flatter to represent border */
+    float: none; /* Remove float */
+    display: inline-block; /* Needed for alignment */
+    margin-right: 8px;
+    opacity: 1;
+    vertical-align: middle;
+}
+
+/* Style close button inside floating header */
+.floating-header button#close-output { /* More specific selector */
+    background: none !important; /* Remove background */
+    border: none;
+    font-size: 1.4rem; /* Make X slightly larger */
+    font-weight: bold;
+    color: #333; /* Black or dark grey */
+    padding: 0 5px;
+    cursor: pointer;
+    line-height: 1; /* Ensure tight fit */
+    opacity: 0.7;
+}
+.floating-header button#close-output:hover {
+    color: #000; /* Black on hover */
+    opacity: 1;
+}
+
+.compare-button-wrapper {
+    text-align: center; /* Center the button */
+    margin-top: 25px; /* Add space above */
+    padding-top: 15px; /* Add padding if needed */
+    border-top: 1px solid #eee; /* Optional separator */
+}
+
+button.compare-button { /* Style the specific button */
+    /* Gradient background */
+    background: linear-gradient(to right, #76C4B5, #DADD60); /* Adjust colors as needed */
+    color: #fff; /* White text usually looks good on gradients */
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Add shadow for readability */
+    border: none;
+    padding: 12px 20px; /* Slightly larger padding */
+    font-weight: 600;
+}
+
+button.compare-button:hover {
+    background: linear-gradient(to right, #63b3a3, #c8cb4f); /* Darker gradient on hover */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Icon buttons (Table/Histogram) */
+button.icon-button { /* Target the class */
+    background: none !important; /* Remove background */
+    border: none;
+    font-size: 1.2rem; /* Adjust icon size */
+    padding: 5px 8px; /* Adjust padding */
+    color: #76C4B5; /* Use theme color */
+    cursor: pointer;
+    vertical-align: middle;
+    transition: color 0.2s ease;
+    line-height: 1; /* Prevent extra spacing */
+}
+
+button.icon-button:hover {
+    color: #136A66; /* Darker theme color on hover */
+}
+
+button.icon-button:disabled {
+    color: #cccccc !important; /* Grey out disabled */
+    cursor: not-allowed;
+}
+
+/* Remove old .icons button style if it conflicts */
+/*
+.icons button { ... }
+*/
+
+/* Activated state for Generate buttons */
+button.activated {
+    background-color: #136A66; /* Darker teal */
+    color: white;
+    border: 2px solid #0e4e4a;
+    font-weight: bold;
+}
+button.activated:hover {
+    background-color: #136A66; /* Keep activated color on hover */
+}
+
+/* Style for H3 containing icon */
+.section-title-with-icon {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px; /* Keep original margin */
+}
+.section-title-with-icon span {
+    flex-grow: 1; /* Allow text to take space */
+}
+.help-icon {
+    font-size: 1.1rem;
+    color: #6c757d; /* Bootstrap secondary color */
+    cursor: pointer;
+    margin-left: 10px;
+    transition: color 0.2s ease;
+}
+.help-icon:hover {
+    color: #0d6efd; /* Bootstrap primary color */
+}
+
+/* ===== Add/Adjust in style.css ===== */
+
+/* --- Floating Panels (General) --- */
+.floating-panel {
+  position: fixed; /* Needed for positioning */
+  z-index: 2000;
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  overflow: hidden; /* Contains header/body */
+  display: flex;
+  flex-direction: column;
+  /* Remove specific top/left/transform if you want initial position elsewhere */
+  /* top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); */
+  /* Set an initial position if desired */
+   top: 100px; /* Example initial top */
+   left: calc(50% - 275px); /* Example initial left (centered based on 550px width) */
+   width: 550px; /* Example width */
+   max-height: 80vh;
+}
+.floating-panel.hidden {
+    display: none !important;
+}
+
+.floating-header {
+  /* ... other styles ... */
+  cursor: move; /* Indicate it's draggable */
+  user-select: none; /* Prevent text selection during drag */
+
+}
+
+.floating-body {
+  /* ... other styles ... */
+  overflow-y: auto;
+}
+
+.floating-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #f7f7f7; /* Light header background */
+  border-bottom: 1px solid #e0e0e0;
+  cursor: move; /* Optional: Makes it look draggable */
+  user-select: none; /* Prevent text selection when dragging header */
+}
+.floating-header span {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: #333;
+  display: flex; /* Align icon and text */
+  align-items: center;
+}
+.floating-header span i { /* Style icon in header */
+    margin-right: 8px;
+    font-size: 1.2rem; /* Match text size */
+    color: #136A66; /* Theme color for icon */
+}
+
+.floating-header button { /* Style close button */
+  background: none;
+  border: none;
+  font-size: 1.5rem; /* Larger 'X' */
+  font-weight: bold;
+  color: #888;
+  padding: 0 5px;
+  cursor: pointer;
+  line-height: 1;
+}
+.floating-header button:hover {
+  color: #333;
+}
+
+.floating-body {
+  padding: 15px 20px;
+  overflow-y: auto; /* Allow body content to scroll */
+  flex-grow: 1; /* Takes up remaining space */
+}
+
+/* Specific styles for Help Panel content if needed */
+#help-content h4 {
+    color: #136A66;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 3px;
+}
+#help-content h4:first-child {
+    margin-top: 0;
+}
+#help-content p, #help-content ul, #help-content ol {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+#help-content ul, #help-content ol {
+    padding-left: 25px;
+}
+#help-content hr {
+    border: none;
+    border-top: 1px dashed #ccc;
+    margin: 20px 0;
+}
+
+/* --- Utility --- */
+.hidden {
+  display: none !important;
+}
+
+.download-buttons button {
+    font-size: 0.85rem; /* Slightly smaller text */
+    padding: 8px 12px;
+    flex-grow: 1; /* Allow buttons to take space */
+}
+.download-buttons button i {
+    margin-right: 5px; /* Space between icon and text */
+}

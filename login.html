@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SE MI Health Equity Viewer</title>
+
+    <!-- Leaflet CSS (Required) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+
+    <!-- Link to your main CSS (Optional, if needed for fonts etc.) -->
+    <!-- <link rel="stylesheet" href=" url_for('static', filename='style.css') }}"> -->
+
+    <style>
+        /* Basic Reset & Body */
+        html, body 
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden; /* Prevent scrollbars caused by map */
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* Match main app */
+        }
+
+        /* Map Background Container */
+        #login-map-background 
+            position: fixed; /* Cover the whole viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Place it behind everything else */
+            opacity: 0.3; /* Apply 30% opacity */
+        }
+
+        /* Login Form Container Styling */
+        .login-wrapper  /* New wrapper to help centering */
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             width: 100%;
+             height: 100%;
+             position: relative; /* Needed for z-index stacking */
+             z-index: 1; /* Ensure it's above the map */
+             background-color: rgba(240, 242, 245, 0.6); /* Optional: slight overlay */
+             padding: 20px; /* Add padding for smaller screens */
+             box-sizing: border-box;
+        }
+
+        .login-container 
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Increased shadow slightly */
+            text-align: center;
+            max-width: 400px;
+            width: 100%; /* Take available width up to max-width */
+            position: relative; /* Ensure it respects z-index */
+            z-index: 2; /* Above wrapper overlay */
+        }
+        .login-container h2 
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .login-container p 
+            margin-bottom: 20px;
+            color: #555;
+            font-size: 0.95rem;
+        }
+        .login-container label 
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            text-align: left;
+            color: #555;
+        }
+        .login-container input[type="password"] 
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .login-container button 
+            width: 100%;
+            padding: 12px;
+            background-color: #76C4B5; /* Your theme color */
+            border: none;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            border0; /* Remove default body margin */
+            overflow: hidden; /* Prevent scrollbars from map background */
+        }
+
+        /* --- Leaflet Map Background --- */
+        #login-map-background 
+            position: fixed; /* Position relative to viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* Behind the login container */
+            opacity: 0.3; /* Apply 30% opacity */
+        }
+        /* Optional: Hide Leaflet controls/popups if they appear */
+        #login-map-background .leaflet-control-container,
+        #login-map-background .leaflet-popup-pane 
+             display: none;
+         }
+        /* --- End Map Background Styles --- */
+
+
+        .login-container 
+            /* Use absolute/relative positioning to center OVER the map */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center trick */
+            z-index: 1; /* Ensure it's above the map */
+
+            /* Keep your existing login styles */
+            background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white background */
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Stronger shadow */
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+        .login-container h2 
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .login-container label 
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            text-align: left;
+            color: #555;
+        }
+        .login-container input[type="password"] 
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .login-container button 
+            width: 100%;
+            padding: 12px;
+            background-color: #76C4B5; /* Your theme color */
+            border: none;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .login-container button:hover 
+            background-color: #63b3a3; /* Darker theme color */
+        }
+        .flash-messages 
+            margin-bottom: 15px;
+            padding: 0;
+            list-style: none;
+        }
+        .flash-messages li 
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        /* Flash message category styles (.danger, .warning, .success, .info) */
+        /* ... (keep your existing flash message styles) ... */
+         .flash-messages .danger  background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+         .flash-messages .warning  background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+         .flash-messages .success  background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+         .flash-messages .info  background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+
+    <!-- Map Container (added) -->
+    <div id="login-map-background"></div>
+
+    <!-- Your existing login form container -->
+    <div class="login-container">
+        <h2>Access Required</h2>
+        <p>Please enter the passcode to access the application.</p>
+
+        <!-- Display Flashed Messages -->
+        % with messages = get_flashed_messages(with_categories=true) %}
+          % if messages %}
+            <ul class=flash-messages>
+            % for category, message in messages %}
+              <li class=" category }}"> message }}</li>
+            % endfor %}
+            </ul>
+          % endif %}
+        % endwith %}
+
+        <!--
+    <label for="passcode">Passcode:</label>
+    <input type="password" id="passcode" name="passcode" required autofocus>
+    <button type="submit">Login</button>
+    </form>
+``` Remove method and action -->
+    <form id="login-form"> <!-- Add an ID -->
+    <label for="passcode">Passcode:</label>
+    <input type="password" id="passcode" name="passcode" required autofocus>
+
+        <!-- Add Copyright -->
+         <p class="copyright" style="margin-top: 25px; font-size: 0.75rem; color: #888;">
+             © <span id="copyright-year"></span> Meixin Yuan, University of Michigan. All Rights Reserved.
+         </p>
+         <!-- End Copyright -->
+    </div>
+
+    <!-- Leaflet JS (Add this before closing body) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <!-- Map Initialization Script (Add this) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() 
+            // Initialize map on the background div
+            var map = L.map('login-map-background', 
+                center: [42.3, -83], // Fixed initial view (SE Michigan approx.)
+                zoom: 9,             // Fixed initial zoom
+                // Disable all user interactions
+                dragging: false,
+                touchZoom: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                // Hide default controls
+                zoomControl: false,
+                attributionControl: false // Hide attribution for background
+            });
+
+            // Add a subtle tile layer (CartoDB Positron/Light is good)
+            L.tileLayer('https://s}.basemaps.cartocdn.com/light_all/z}/x}/y}r}.png', 
+                // No attribution needed if hidden by attributionControl: false
+                // attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19 // Optional maxZoom
+            }).addTo(map);
+
+            // Prevent map container from grabbing focus
+             map.getContainer().setAttribute('tabindex', '-1');
+        });
+    </script>
+
+</body>
+</html>

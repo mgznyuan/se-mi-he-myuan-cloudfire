@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SE MI Health Equity Viewer</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Leaflet Core + Plugins -->
+  <!-- Leaflet Core JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="/static/L.Map.Sync.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-image/0.4.0/leaflet-image.min.js" integrity="sha512-4JjMsaVPA9Y9r7Lp3CJEy9Mv6Pj+h5A1LUAz5QyZwvZl6c+Yp2Nq5/NQv71jP0cm5yI14X/6r41xXj+9m5GkPA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="/static/script.js"></script>
+
+  <style>
+    /* Embedded style for legend icons - can be moved to style.css */
+    .legend i 
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.7;
+      border: 1px solid #999; /* Add border for clarity */
+    
+    .legend span 
+        line-height: 18px; /* Align text with icon */
+    
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <h2 class="app-title">Southeast Michigan Health Equity Viewer</h2>
+
+      <!-- Section 1: Display Individual Variable -->
+      <section class="form-section">
+        <h3>Display Variable</h3>
+        <label for="field-select">Select a variable to view on the map:</label>
+        <select id="field-select">
+            <!-- Options will be populated by script.js -->
+            <option value="">Loading variables...</option>
+        </select>
+         <!-- Button Group for Current Variable -->
+        <div class="current-var-actions">
+            <span>Show data for current view:</span>
+            <span class="icons">
+              <button id="show-table-var" title="Table View"><i class="bi bi-table"></i></button>
+              <button id="show-histogram-var" title="Histogram View"><i class="bi bi-graph-up"></i></button>
+            </span>
+        </div>
+      </section>
+
+      <!-- Section 2: Create Custom Index -->
+      <section class="form-section">
+        <h3 class="section-title-with-icon">
+            <span>Create Custom Index</span>
+            <i id="help-icon" class="bi bi-info-circle-fill help-icon" title="Click for explanation"></i>
+        </h3>
+
+        <!-- Index Name Input -->
+        <label for="index-name">Index Name:</label>
+        <input type="text" id="index-name" placeholder="e.g., Mobility_Vulnerability" />
+
+        <!-- Index Description Input -->
+        <label for="index-desc">Description (Optional):</label>
+        <textarea id="index-desc" rows="2" placeholder="Short description..."></textarea>
+
+        <!-- Variable Selection Dropdowns Area -->
+        <div class="variable-selection-dropdowns">
+            <div>
+                <label for="social-vars-select">Social & Demographic Vars:</label>
+                <!-- Ensure this ID matches JS -->
+                <select multiple id="social-vars-select" class="multi-select-vars">
+                    <!-- Options populated by script.js -->
+                    <option disabled>Loading...</option>
+                </select>
+            </div>
+            <div>
+                <label for="env-vars-select">Environmental & Built Env Vars:</label>
+                <!-- Ensure this ID matches JS -->
+                <select multiple id="env-vars-select" class="multi-select-vars">
+                    <!-- Options populated by script.js -->
+                    <option disabled>Loading...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Selected Variables Display Area -->
+        <div class="actions-inline">
+          <label>Selected Variables:</label>
+          <!-- Ensure this ID matches JS -->
+          <button id="reset-selection" type="button" title="Clear selected variables">Reset</button>
+        </div>
+        <!-- Ensure this ID matches JS -->
+        <div id="selected-variables" class="selected-box">
+            <!-- Selected tags will be added here by script.js -->
+        </div>
+
+        <!-- Index Generation Buttons Area -->
+        <div class="actions-row">
+          <!-- Ensure these IDs match JS -->
+          
+          <button id="generate-residential">Generate Residential Index</button>
+          <button id="generate-index">Generate Activity Space Index</button>
+        </div>
+
+      </section> <!-- End Section 2 -->
+
+
+      <!-- Section 3: Index Info & Actions -->
+      <section class="form-section">
+          <h3>Generated Indices</h3>
+          <div id="index-info" class="info-window">Select a variable or generate an index.</div>
+
+          <div class="index-chart-buttons">
+              <div>
+                  <span>Residential Index:</span>
+                  <!-- ADD class="icon-button" -->
+                  <button id="show-table-residential" class="icon-button" title="Residential Index Table" disabled><i class="bi bi-table"></i></button>
+                  <button id="show-histogram-residential" class="icon-button" title="Residential Index Histogram" disabled><i class="bi bi-graph-up"></i></button>
+              </div>
+              <div>
+                  <span>Activity Index:</span>
+                  <!-- ADD class="icon-button" -->
+                  <button id="show-table-activity" class="icon-button" title="Activity Index Table" disabled><i class="bi bi-table"></i></button>
+                  <button id="show-histogram-activity" class="icon-button" title="Activity Index Histogram" disabled><i class="bi bi-graph-up"></i></button>
+              </div>
+          </div>
+
+          <!-- Compare Button -->
+          <div class="compare-button-wrapper">
+              <button id="compare-maps" class="action-button compare-button">Compare Indices Side-by-Side</button>
+          </div>
+
+          <!-- ADD DOWNLOAD BUTTONS FOR INDICES -->
+          <div class="actions-row download-buttons" style="margin-top: 10px;">
+               <button id="download-residential-data" class="action-button" disabled title="Download data for generated Residential Index"><i class="bi bi-download"></i> Res. Data</button>
+               <button id="download-activity-data" class="action-button" disabled title="Download data for generated Activity Space Index"><i class="bi bi-download"></i> Activity Data</button>
+               <!-- <button id="download-map-image" class="action-button" disabled title="Download current map view as image (Experimental)"><i class="bi bi-image"></i> Map Image</button>  -->
+          </div>
+
+
+      </section>
+
+
+      <!-- Section 4: Race Analysis -->
+      <section class="form-section">
+        <h3>Analyze Index by Race Group</h3>
+        <p class="help-text">Select dominant race groups to highlight tracts and view statistics for a generated index.</p>
+        <div id="race-selection" class="checkbox-group">
+          <label><input type="checkbox" class="race-checkbox" value="white" /> White</label>
+          <label><input type="checkbox" class="race-checkbox" value="black" /> Black</label>
+          <label><input type="checkbox" class="race-checkbox" value="hisp" /> Hispanic</label>
+          <label><input type="checkbox" class="race-checkbox" value="asian" /> Asian</label>
+          <label><input type="checkbox" class="race-checkbox" value="other" /> Other</label>
+        </div>
+
+        <!-- Race Analysis Action Buttons -->
+        <div class="actions-row">
+          <button id="analyze-residential" disabled>Analyze Residential Index</button>
+          <button id="analyze-activity" disabled>Analyze Activity Index</button>
+        </div>
+
+        <!-- Race Analysis Results Panel -->
+        <div id="race-analysis-result" class="info-window">
+            Select race groups and click an "Analyze" button above.
+        </div>
+
+        <!-- ADD DOWNLOAD BUTTON FOR RACE TABLE -->
+        <div class="actions-row download-buttons" style="margin-top: 10px;">
+           <button id="download-race-table" class="action-button" disabled title="Download the race analysis statistics table"><i class="bi bi-download"></i> Race Table</button>
+           <!-- ADD MAP DOWNLOAD BUTTON (Could be here too, or just one central one) -->
+           <!-- <button id="download-map-image" class="action-button" disabled title="Download current map view as image"><i class="bi bi-image"></i> Map Image</button> -->
+        </div>
+      </section>
+
+      <!-- Add Copyright -->
+      <p class="copyright sidebar-copyright" style="margin-top: auto; padding-top: 20px; font-size: 0.75rem; color: #888; text-align: center;">
+          © <span id="copyright-year-main"></span> Meixin Yuan, University of Michigan. All Rights Reserved.
+      </p>
+      <!-- End Copyright -->
+
+    </aside> <!-- End Sidebar -->
+
+    <!-- Map Container -->
+    <main class="map-container">
+      <!-- Single map view -->
+      <div id="map" class="map-pane"></div>
+
+      <!-- Side-by-side comparison view (Initially hidden) -->
+      <div id="map-wrapper" class="map-compare hidden">
+        <div class="map-column">
+          <h4 id="map-left-title" class="map-title">Residential Index</h4>
+          <div id="map-left" class="split-map"></div>
+        </div>
+        <div class="map-column">
+          <h4 id="map-right-title" class="map-title">Activity Space Index</h4>
+          <div id="map-right" class="split-map"></div>
+        </div>
+      </div>
+
+      <!-- Back button for comparison view (Initially hidden) -->
+      <button id="back-button" class="back-button hidden" title="Return to single map view">🔙 Back to Single Map</button>
+    </main> <!-- End Map Container -->
+  </div> <!-- End App Container -->
+
+  <!-- Floating Output Panel (Initially hidden) -->
+  <div id="floating-output" class="floating-panel hidden" data-current-field="">
+    <div class="floating-header">
+      <span id="floating-panel-title">Chart/Table Output</span>
+      <button id="close-output" title="Close Panel">X</button>
+    </div>
+    <div id="visual-output" class="floating-body">
+        <!-- Content (table or canvas) will be added here by script.js -->
+    </div>
+  </div>
+
+    <!-- **** HELP PANEL HERE **** -->
+  <div id="help-panel" class="floating-panel hidden"> <!-- Ensure classes are present -->
+    <div class="floating-header">
+      <span><i class="bi bi-info-circle"></i> Application Help</span>
+      <button id="close-help-panel" title="Close Help">✖</button>
+    </div>
+    <div id="help-content" class="floating-body">
+    <h4>How Indices Are Calculated:</h4>
+    <p>The application allows you to generate custom indices based on selected variables to explore different aspects of health equity across census tracts.</p>
+    <hr>
+
+    <p><strong>Custom Residential Index:</strong></p>
+    <p>This index reflects the combined characteristics of the selected variables within each census tract's residential environment.</p>
+    <ol>
+        <li><strong>Variable Selection:</strong> You select the specific social, demographic, environmental, or health variables of interest.</li>
+        <li><strong>Standardization (Z-scores):</strong> To ensure variables with different units and scales contribute equally, each selected variable's raw value (x<sub>fj</sub>) in a tract (j) is standardized. This converts it to a Z-score (x'<sub>fj</sub>) using the formula:<br>
+            <code>x'<sub>fj</sub> = (x<sub>fj</sub> - μ<sub>f</sub>) / σ<sub>f</sub></code><br>
+            where μ<sub>f</sub> is the average value of variable (f) across all tracts in the study area, and σ<sub>f</sub> is its standard deviation. The resulting Z-scores have a mean of 0 and a standard deviation of 1 across the region.
+        </li>
+        <li><strong>Averaging:</strong> The final Residential Index score (I<sub>ij</sub>) for a tract (j) using your selected set of variables (i) is calculated as the simple average of the Z-scores of those selected variables for that tract:<br>
+             <code>I<sub>ij</sub> = (1/n<sub>f</sub>) * Σ(x'<sub>fij</sub>)*100</code> (Sum over all selected variables f and X100 for display)<br>
+             where n<sub>f</sub> is the number of variables you selected.
+        </li>
+    </ol>
+    <p><strong>Interpretation:</strong> A higher Residential Index score indicates that a census tract has higher values, on average, across the specific set of standardized variables you selected, compared to other tracts in the region. It reflects the composite characteristic measured by your chosen variables within the residential context.</p>
+    <hr>
+
+    <p><strong>Custom Activity Space Index:</strong></p>
+    <p>This index aims to quantify the social and environmental characteristics encountered by residents of a tract during their activities *outside* their immediate residential area, based on aggregated travel patterns (e.g., using SafeGraph data showing origin-destination flows between tracts).</p>
+    <ol>
+        <li><strong>Variable Selection:</strong> You select the variables, just like for the Residential Index.</li>
+        <li><strong>Underlying Residential Index Calculation:</strong> First, an underlying residential-style index (I<sub>ik</sub>) is calculated for *all* potential destination tracts (k) using the method described above (Z-score standardization and averaging of your selected variables).</li>
+        <li><strong>Travel Weighting:</strong> The Activity Space Index (AI<sub>ij</sub>) for your origin tract (j) is then calculated by taking a *weighted average* of the underlying index values (I<sub>ik</sub>) of the various destination tracts (k) that residents from tract (j) visit. The weight for each destination tract is based on the proportion of trips from tract (j) going to that destination tract (k), denoted as t<sub>jk</sub> / T<sub>j</sub> (where T<sub>j</sub> is the total trips originating from tract j):<br>
+            <code>AI<sub>ij</sub> = Σ [ (t<sub>jk</sub> / T<sub>j</sub>) * I<sub>ik</sub> ]*100</code> (Sum over all destinations k visited from j and X100 for display)
+        </li>
+    </ol>
+    <p><strong>Interpretation:</strong> A higher Activity Space Index score for an origin tract suggests that its residents, based on their aggregate travel patterns, tend to visit destination tracts that have higher values (on average) for the underlying index calculated from your selected variables. It reflects the characteristics encountered in the places people frequent for their activities, weighted by how often they go there. If residents only visited places exactly like their home tract, the Activity Space Index would equal the Residential Index.</p>
+    <hr>
+
+    <h4>Other Functions:</h4>
+    <ul>
+      <li><strong>Display Variable:</strong> Show individual census variables (original values or potentially Z-scores if available) on the map.</li>
+      <li><strong>Table/Histogram:</strong> View the data distribution for the currently displayed variable or a generated index in a floating panel.</li>
+      <li><strong>Analyze by Race:</strong> Highlight tracts dominated by selected race groups and view index statistics (median, mean, IQR) for those groups compared to all tracts. Requires a Residential or Activity Index to be generated first.</li>
+      <li><strong>Compare Indices:</strong> View generated Residential and Activity Space indices side-by-side on split maps (requires both to be generated).</li>
+      <li><strong>Download Data:</strong> Download the raw data (including input variables and calculated index score) for a generated index, or the summary statistics table from the race analysis, as CSV files. Downloads include metadata and variable definitions.</li>
+      <li><strong>Floating Panels:</strong> The Help and Output (Table/Histogram) panels can be moved by clicking and dragging their header bars.</li>
+    </ul>
+</div>
+<!-- End #help-content -->
+  <!-- Scripts -->
+  <!-- Leaflet Core JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
+  <!-- Leaflet.Sync Plugin JS - Make sure path is correct -->
+  <script src="/static/L.Map.Sync.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+  <!--  Custom Application JS -->
+ <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# wrangler.toml (REVISED)
+
+name = "se-mi-viewer-frontend" # Or your preferred project name
+compatibility_date = "2024-04-10" # Use today's date or a recent one
+compatibility_flags = [ "nodejs_compat" ] # <--- ADD THIS LINE
+
+# --- Local Development Bindings ---
+
+# R2 Buckets
+[[r2_buckets]]
+binding = "GEOJSON_BUCKET"     # The name used in your Worker code (env.GEOJSON_BUCKET)
+preview_bucket_name = "se-mi-health-equity-data-myuan" #  staging/preview R2 bucket name
+bucket_name = "se-mi-health-equity-data-myuan" #  actual production R2 bucket name
+
+# --- `.dev.vars` handles secrets automatically ---
+# Ensure you have a .dev.vars file in the root with:
+# PASSCODE_HASH="your_local_test_sha256_hash_here"
+
+# --- Optional: Other Bindings (KV, D1, etc.) ---
+# [[kv_namespaces]]
+# binding = "MY_KV_BINDING"
+# preview_id = "your_preview_kv_namespace_id" # Often needed for local dev
+# id = "your_production_kv_namespace_id"
