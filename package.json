@@ -1,24 +1,16 @@
 {
-  "name": "se-mi-health-equity-viewer",
+  "name": "se-mi-viewer-frontend",
   "version": "1.0.0",
-  "description": "Frontend and Worker backend for the SE MI Health Equity Viewer",
-  "type": "module",
   "private": true,
   "scripts": {
-    "start": "wrangler pages dev . --r2=DATA_BUCKET",
-    "deploy": "wrangler pages deploy .",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Meixin Yuan",
-  "license": "UNLICENSED",
-  "dependencies": {
-    "@duckdb/duckdb-wasm": "^1.28.0",
-    "itty-router": "^4.0.27"
+    "dev": "npx wrangler pages dev public",
+    "deploy": "npx wrangler pages deploy public"
   },
   "devDependencies": {
-    "wrangler": "^4.9.1"
+    "wrangler": "^4.9.1" // Or your installed version
   },
-  "engines": {
-    "node": ">=18.0.0"
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.28.1", // Ensure this line exists with a version
+    "itty-router": "^4.0.27"       // Ensure this line exists with a version
   }
 }
