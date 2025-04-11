@@ -606,3 +606,10 @@ router.post('/api/login', async (request, env) => {
 //         });
 //     }
 // }
+
+export default {
+    fetch(request, env, ctx) {
+         console.log("Worker executing (build test)"); // You won't see this if build fails
+         return new Response("Build test - Should not run if build fails", { status: 501 }); // Not Implemented
+     }
+ }
