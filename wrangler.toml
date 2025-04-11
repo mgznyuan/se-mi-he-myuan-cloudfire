@@ -11,6 +11,8 @@ compatibility_date = "2025-4-10" # Or a newer date suggested by Wrangler
 # Tells `wrangler pages dev` where your static site files are located.
 pages_build_output_dir = "."
 
+main = "functions/_worker-bundled.js"
+
 # --- Bindings for Local Development (`wrangler pages dev`) ---
 # These tell the local dev server what cloud resources your Function needs.
 # You MUST also configure these in the Cloudflare Dashboard for deployment.
@@ -22,7 +24,7 @@ binding = "GEOJSON_BUCKET"
 # Using a separate "-preview" bucket for local dev is recommended but optional.
 bucket_name = "se-mi-health-equity-data-myuan"
 
-main = "functions/_worker-bundled.js"
+
 
 [build]
 command = "npm run build"
