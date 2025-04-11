@@ -1,23 +1,24 @@
-# wrangler.toml (REVISED)
+# wrangler.toml
 
-name = "se-mi-viewer-frontend" # Or your preferred project name
-compatibility_date = "2024-04-10" # Use today's date or a recent one
-compatibility_flags = [ "nodejs_compat" ] # <--- ADD THIS LINE
+# A name for your project configuration (can be anything descriptive)
+name = "health-equity-viewer"
 
-# --- Local Development Bindings ---
+# Use a recent compatibility date
+compatibility_date = "2025-4-10" # Or a newer date suggested by Wrangler
 
-# R2 Buckets
+# --- Cloudflare Pages Configuration ---
+
+# Tells `wrangler pages dev` where your static site files are located.
+pages_build_output_dir = "."
+
+# --- Bindings for Local Development (`wrangler pages dev`) ---
+# These tell the local dev server what cloud resources your Function needs.
+# You MUST also configure these in the Cloudflare Dashboard for deployment.
+
 [[r2_buckets]]
-binding = "GEOJSON_BUCKET"     # The name used in your Worker code (env.GEOJSON_BUCKET)
-preview_bucket_name = "se-mi-health-equity-data-myuan" #  staging/preview R2 bucket name
-bucket_name = "se-mi-health-equity-data-myuan" #  actual production R2 bucket name
+# This variable name MUST match how you access it in your code (env.GEOJSON_BUCKET)
+binding = "GEOJSON_BUCKET"
+# This is the EXACT name of the R2 bucket you created in Cloudflare.
+# Using a separate "-preview" bucket for local dev is recommended but optional.
+bucket_name = "se-mi-health-equity-data-myuan"
 
-# --- `.dev.vars` handles secrets automatically ---
-# Ensure you have a .dev.vars file in the root with:
-# PASSCODE_HASH="your_local_test_sha256_hash_here"
-
-# --- Optional: Other Bindings (KV, D1, etc.) ---
-# [[kv_namespaces]]
-# binding = "MY_KV_BINDING"
-# preview_id = "your_preview_kv_namespace_id" # Often needed for local dev
-# id = "your_production_kv_namespace_id"
