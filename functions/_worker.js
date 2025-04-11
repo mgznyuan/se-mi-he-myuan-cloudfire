@@ -234,375 +234,375 @@ router.post('/api/login', async (request, env) => {
         }
 
         if (!passcode || typeof passcode !== 'string') {
-             return new Response(JSON.stringify({ success: false, error: 'Passcode required.' }), {
-                status: 400, headers: responseHeaders
-            });
-        }
+//              return new Response(JSON.stringify({ success: false, error: 'Passcode required.' }), {
+//                 status: 400, headers: responseHeaders
+//             });
+//         }
 
-        // Use the secure bcrypt verification function
-        const isValid = await verifyPasscode(passcode, storedHash);
+//         // Use the secure bcrypt verification function
+//         const isValid = await verifyPasscode(passcode, storedHash);
 
-        if (isValid) {
-            // Consider setting a secure, HttpOnly cookie or session token here instead of just success=true
-            console.log("Login successful.");
-            return new Response(JSON.stringify({ success: true }), {
-                status: 200, headers: responseHeaders
-            });
-        } else {
-            // Do not reveal if the user exists, just that login failed
-            console.log("Login failed: Invalid passcode.");
-            return new Response(JSON.stringify({ success: false, error: 'Invalid passcode.' }), {
-                status: 401, // Unauthorized
-                headers: responseHeaders
-            });
-        }
-    } catch (err) {
-        // Catch unexpected issues
-        console.error("Login error:", err);
-        return new Response(JSON.stringify({ success: false, error: 'Server error during login.' }), {
-            status: 500, headers: responseHeaders
-        });
-    }
-});
+//         if (isValid) {
+//             // Consider setting a secure, HttpOnly cookie or session token here instead of just success=true
+//             console.log("Login successful.");
+//             return new Response(JSON.stringify({ success: true }), {
+//                 status: 200, headers: responseHeaders
+//             });
+//         } else {
+//             // Do not reveal if the user exists, just that login failed
+//             console.log("Login failed: Invalid passcode.");
+//             return new Response(JSON.stringify({ success: false, error: 'Invalid passcode.' }), {
+//                 status: 401, // Unauthorized
+//                 headers: responseHeaders
+//             });
+//         }
+//     } catch (err) {
+//         // Catch unexpected issues
+//         console.error("Login error:", err);
+//         return new Response(JSON.stringify({ success: false, error: 'Server error during login.' }), {
+//             status: 500, headers: responseHeaders
+//         });
+//     }
+// });
 
-// GET /api/geojson
-router.get('/api/geojson', async (request, env) => {
-    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Correct Content-Type
-    try {
-        const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
-        // Basic validation of GeoJSON structure
-        if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
-            console.error("Invalid or incomplete GeoJSON structure received from R2:", GEOJSON_OBJECT_KEY);
-            return new Response(JSON.stringify({ error: 'Invalid map data format received.' }), {
-                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
-        return new Response(JSON.stringify(geojsonData), { // Ensure stringify for Response body
-            status: 200, headers: responseHeaders
-        });
-    } catch (err) {
-        console.error("Error in /api/geojson:", err);
-        const status = err.status || 500; // Use status from error if set (e.g., 404 from getR2Object)
-        return new Response(JSON.stringify({ error: err.message || 'Error retrieving map data.' }), {
-             status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-        });
-    }
-});
+// // GET /api/geojson
+// router.get('/api/geojson', async (request, env) => {
+//     const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Correct Content-Type
+//     try {
+//         const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
+//         // Basic validation of GeoJSON structure
+//         if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+//             console.error("Invalid or incomplete GeoJSON structure received from R2:", GEOJSON_OBJECT_KEY);
+//             return new Response(JSON.stringify({ error: 'Invalid map data format received.' }), {
+//                 status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
+//         return new Response(JSON.stringify(geojsonData), { // Ensure stringify for Response body
+//             status: 200, headers: responseHeaders
+//         });
+//     } catch (err) {
+//         console.error("Error in /api/geojson:", err);
+//         const status = err.status || 500; // Use status from error if set (e.g., 404 from getR2Object)
+//         return new Response(JSON.stringify({ error: err.message || 'Error retrieving map data.' }), {
+//              status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//         });
+//     }
+// });
 
-// GET /api/get_index_fields
-router.get('/api/get_index_fields', (request, env) => {
-    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/json' };
-    // *** CRITICAL VERIFICATION NEEDED ***
-    // This list MUST EXACTLY match:
-    // 1. The `value` attributes in your frontend multi-select <option> tags.
-    // 2. The base names used to construct column names for calculations
-    //    (e.g., 'poverty_rate' used to find 'poverty_rate_zscore_o' in GeoJSON
-    //     and 'poverty_rate_zscore_d' in Parquet).
-    // Remove any fields NOT intended for custom index selection.
-     const indexFields = [
-        'no_high_school_rate', 'no_car_rate', 'total_no_work_rate',
-        'poverty_rate', 'renter_rate', 'total_no_ins_rate', 'sdwalk_length_m',
-        'bik_length_m', 'park_area', 'sidewalk_per_cap', 'park_per_cap',
-        'bike_per_cap', 'healthy_retailer', 'pharma', 'clinic', 'healthy_ret_cap',
-        'pharma_cap', 'clinic_cap', 'PRE1960PCT', 'OZONE', 'PM25', 'PNPL', 'PRMP',
-        'PTSDF', 'DSLPM', 'unhealthy_ret_cap', 'liq_tab_cap', 'food_retailer_cap',
-        // Verify if Health Outcomes are Z-scored and available for index calculation
-        // 'Obesity', 'Diabetes', 'High Blood Pressure', 'Coronary Heart Disease',
-        // 'High Cholesterol', 'Depression', 'Stroke', 'Annual Checkup', 'Physical Inactivity',
-        // Verify if pre-defined indices should be selectable components for *new* custom indices
-        'ndi', 'uei', 'hoi',
-        // 'andi_final', 'auie_final', 'ahoi_final' // Likely NOT selectable for custom index
-    ];
-    console.log("Returning index fields:", indexFields);
-    // Use itty-router's json helper which handles stringify and content-type
-    return json(indexFields, { headers: request.corsHeaders });
-});
-
-
-// POST /api/generate_residential_index
-router.post('/api/generate_residential_index', async (request, env) => {
-    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Result is GeoJSON
-    try {
-        let name, selectedVarsJS;
-         try {
-             const data = await request.json();
-             name = data?.name;
-             selectedVarsJS = data?.variables;
-        } catch (e) {
-            return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
-                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
-
-        const indexBaseName = cleanIndexName(name); // Clean the user-provided name
-        const indexColName = `${indexBaseName}_RES`; // Construct the final column name
-
-        if (!indexBaseName || !selectedVarsJS || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
-             return new Response(JSON.stringify({ error: 'Index name and at least one variable are required.' }), {
-                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
-        console.log(`Generating Residential Index: ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
-
-        // 1. Fetch Base GeoJSON
-        const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
-        if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
-             return new Response(JSON.stringify({ error: 'Invalid base map data format.' }), {
-                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
-
-        // 2. Calculate Residential Index for each feature
-        let calculationCount = 0;
-        let featuresProcessed = 0;
-        geojsonData.features.forEach(feature => {
-            featuresProcessed++;
-            // Ensure properties object exists (safer)
-            if (!feature.properties) feature.properties = {};
-
-            const indexValue = calculateUnderlyingResidentialIndex(feature, selectedVarsJS);
-            feature.properties[indexColName] = indexValue; // Assign calculated value (can be null)
-            if (indexValue !== null) calculationCount++;
-        });
-
-        console.log(`Calculated residential index for ${calculationCount} / ${featuresProcessed} features as ${indexColName}.`);
-        if (featuresProcessed > 0 && calculationCount === 0) {
-             console.warn(`WARNING: Residential index calculation resulted in null for ALL features for index '${indexColName}'. Check required '_zscore_o' columns for [${selectedVarsJS.join(', ')}] in GeoJSON (${GEOJSON_OBJECT_KEY}).`);
-        }
-
-        // 3. Return Modified GeoJSON
-        return new Response(JSON.stringify(geojsonData), {
-            status: 200, headers: responseHeaders
-        });
-
-    } catch (err) {
-        console.error(`Error generating residential index:`, err);
-        const status = err.status || 500;
-        return new Response(JSON.stringify({ error: err.message || 'Failed to generate residential index.' }), {
-             status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-        });
-    }
-});
+// // GET /api/get_index_fields
+// router.get('/api/get_index_fields', (request, env) => {
+//     const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/json' };
+//     // *** CRITICAL VERIFICATION NEEDED ***
+//     // This list MUST EXACTLY match:
+//     // 1. The `value` attributes in your frontend multi-select <option> tags.
+//     // 2. The base names used to construct column names for calculations
+//     //    (e.g., 'poverty_rate' used to find 'poverty_rate_zscore_o' in GeoJSON
+//     //     and 'poverty_rate_zscore_d' in Parquet).
+//     // Remove any fields NOT intended for custom index selection.
+//      const indexFields = [
+//         'no_high_school_rate', 'no_car_rate', 'total_no_work_rate',
+//         'poverty_rate', 'renter_rate', 'total_no_ins_rate', 'sdwalk_length_m',
+//         'bik_length_m', 'park_area', 'sidewalk_per_cap', 'park_per_cap',
+//         'bike_per_cap', 'healthy_retailer', 'pharma', 'clinic', 'healthy_ret_cap',
+//         'pharma_cap', 'clinic_cap', 'PRE1960PCT', 'OZONE', 'PM25', 'PNPL', 'PRMP',
+//         'PTSDF', 'DSLPM', 'unhealthy_ret_cap', 'liq_tab_cap', 'food_retailer_cap',
+//         // Verify if Health Outcomes are Z-scored and available for index calculation
+//         // 'Obesity', 'Diabetes', 'High Blood Pressure', 'Coronary Heart Disease',
+//         // 'High Cholesterol', 'Depression', 'Stroke', 'Annual Checkup', 'Physical Inactivity',
+//         // Verify if pre-defined indices should be selectable components for *new* custom indices
+//         'ndi', 'uei', 'hoi',
+//         // 'andi_final', 'auie_final', 'ahoi_final' // Likely NOT selectable for custom index
+//     ];
+//     console.log("Returning index fields:", indexFields);
+//     // Use itty-router's json helper which handles stringify and content-type
+//     return json(indexFields, { headers: request.corsHeaders });
+// });
 
 
-// POST /api/generate_index (Activity Index - Using Apache Arrow)
-router.post('/api/generate_index', async (request, env) => {
-    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Result is GeoJSON
+// // POST /api/generate_residential_index
+// router.post('/api/generate_residential_index', async (request, env) => {
+//     const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Result is GeoJSON
+//     try {
+//         let name, selectedVarsJS;
+//          try {
+//              const data = await request.json();
+//              name = data?.name;
+//              selectedVarsJS = data?.variables;
+//         } catch (e) {
+//             return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
+//                 status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
 
-    try {
-         let name, selectedVarsJS;
-         try {
-             const data = await request.json();
-             name = data?.name;
-             selectedVarsJS = data?.variables;
-        } catch (e) {
-            return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
-                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
+//         const indexBaseName = cleanIndexName(name); // Clean the user-provided name
+//         const indexColName = `${indexBaseName}_RES`; // Construct the final column name
 
-        const indexBaseName = cleanIndexName(name);
-        const indexColName = `${indexBaseName}_ACT`;
+//         if (!indexBaseName || !selectedVarsJS || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
+//              return new Response(JSON.stringify({ error: 'Index name and at least one variable are required.' }), {
+//                 status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
+//         console.log(`Generating Residential Index: ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
 
-        if (!indexBaseName || !selectedVarsJS || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
-             return new Response(JSON.stringify({ error: 'Index name and at least one variable are required.' }), {
-                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
-        console.log(`Generating Activity Index (Arrow): ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
+//         // 1. Fetch Base GeoJSON
+//         const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
+//         if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+//              return new Response(JSON.stringify({ error: 'Invalid base map data format.' }), {
+//                 status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
 
-        // 1. Fetch BASE GeoJSON (needed for merging results back)
-        const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
-        if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
-             return new Response(JSON.stringify({ error: 'Invalid base map data format.' }), {
-                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
+//         // 2. Calculate Residential Index for each feature
+//         let calculationCount = 0;
+//         let featuresProcessed = 0;
+//         geojsonData.features.forEach(feature => {
+//             featuresProcessed++;
+//             // Ensure properties object exists (safer)
+//             if (!feature.properties) feature.properties = {};
 
-        // 2. Fetch Parquet Data as ArrayBuffer
-        console.log(`Fetching Parquet data from R2: ${PARQUET_OBJECT_KEY}`);
-        const parquetBuffer = await getR2Object(env, R2_BINDING_NAME_TO_USE, PARQUET_OBJECT_KEY, 'arrayBuffer');
-        if (!parquetBuffer || parquetBuffer.byteLength === 0) {
-             return new Response(JSON.stringify({ error: 'Failed to load required Parquet data for activity index.' }), {
-                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-            });
-        }
-        console.log(`Parquet data fetched successfully (${parquetBuffer.byteLength} bytes).`);
-        const parquetUint8Array = new Uint8Array(parquetBuffer);
+//             const indexValue = calculateUnderlyingResidentialIndex(feature, selectedVarsJS);
+//             feature.properties[indexColName] = indexValue; // Assign calculated value (can be null)
+//             if (indexValue !== null) calculationCount++;
+//         });
 
-        // 3. Read Parquet data using Apache Arrow JS
-        // *** ACTION REQUIRED: Verify the correct Arrow JS API for reading Parquet from a buffer ***
-        // This is a plausible approach using RecordBatchStreamReader, but double-check Arrow JS docs.
-        console.log("Attempting to read Parquet buffer with Arrow JS...");
-        let table;
-        try {
-            // This assumes the buffer contains Arrow IPC stream format derived from Parquet.
-            // Check Arrow JS docs if there's a direct Parquet-to-Table function.
-            const reader = RecordBatchStreamReader.from(parquetUint8Array);
-            table = await reader.readAll(); // Reads all batches into memory - consider streaming for huge files
+//         console.log(`Calculated residential index for ${calculationCount} / ${featuresProcessed} features as ${indexColName}.`);
+//         if (featuresProcessed > 0 && calculationCount === 0) {
+//              console.warn(`WARNING: Residential index calculation resulted in null for ALL features for index '${indexColName}'. Check required '_zscore_o' columns for [${selectedVarsJS.join(', ')}] in GeoJSON (${GEOJSON_OBJECT_KEY}).`);
+//         }
 
-            if (!table || table.numRows === 0) {
-                 console.warn(`Arrow JS read the Parquet file ('${PARQUET_OBJECT_KEY}'), but it resulted in an empty table or null.`);
-                 // Allow proceeding, aggregation will just be empty
-            } else {
-                 console.log(`Arrow JS read Parquet into a table with ${table.numRows} rows and ${table.numCols} columns.`);
-                 // Optional: Log schema for debugging
-                 console.log("Arrow Table Schema:", table.schema.toString());
-            }
+//         // 3. Return Modified GeoJSON
+//         return new Response(JSON.stringify(geojsonData), {
+//             status: 200, headers: responseHeaders
+//         });
 
-        } catch (arrowError) {
-            console.error(`Apache Arrow failed to read or parse the Parquet buffer from '${PARQUET_OBJECT_KEY}':`, arrowError);
-            throw new Error(`Failed to process Parquet data using Arrow: ${arrowError.message}`);
-        }
-
-        // 4. Aggregate data in JavaScript (Replaces SQL GROUP BY / SUM)
-        console.log("Aggregating Parquet data using JavaScript...");
-        const aggregationMap = new Map(); // Map<Origin_tract (string), totalWeightedSum (number)>
-
-        // *** CRITICAL VERIFICATION NEEDED for column names in PARQUET ***
-        const originCol = "Origin_tract"; // Verify this exact column name in your Parquet file
-        const weightCol = "perc_visit";   // Verify this exact column name in your Parquet file
-        const requiredZscoreDCols = selectedVarsJS.map(jsVar => `${jsVar.replace(/ /g, '')}_zscore_d`); // Verify this naming convention
-
-        // Check if required columns exist in the table schema (robustness check)
-        const schema = table.schema;
-        const requiredCols = [originCol, weightCol, ...requiredZscoreDCols];
-        const missingCols = requiredCols.filter(colName => !schema.fields.some(field => field.name === colName));
-
-        if (missingCols.length > 0) {
-            console.error(`Missing required columns in Parquet file ('${PARQUET_OBJECT_KEY}'): ${missingCols.join(', ')}`);
-            throw new Error(`Parquet data is missing required columns for calculation: ${missingCols.join(', ')}`);
-        }
-
-        // Iterate through Arrow Table rows - handle potential nulls safely
-        for (const row of table) { // Assumes `table` is iterable
-            const originTract = row.get(originCol)?.toString().trim(); // Get origin tract, ensure string, trim whitespace
-            const weight = Number(row.get(weightCol) ?? 0); // Get weight, default null/undefined/NaN to 0
-
-            // Skip rows with missing origin or zero/invalid weight (can't contribute to weighted sum)
-            if (!originTract || !weight || isNaN(weight)) {
-                continue;
-            }
-
-            let rowWeightedSum = 0;
-            for (const zscoreCol of requiredZscoreDCols) {
-                const zscoreValue = Number(row.get(zscoreCol) ?? 0); // Get z-score, default null/undefined/NaN to 0
-                // Check zscoreValue is a valid number before multiplying
-                if (!isNaN(zscoreValue)) {
-                    rowWeightedSum += (zscoreValue * weight);
-                }
-            }
-
-            // Add the sum for this row to the total for its origin tract
-            const currentSum = aggregationMap.get(originTract) || 0;
-            aggregationMap.set(originTract, currentSum + rowWeightedSum);
-        }
-        console.log(`JavaScript aggregation complete. Found data for ${aggregationMap.size} origin tracts.`);
-
-        // 5. Process Aggregated Results into Final Index Values Map
-        const calculatedIndexValues = new Map();
-        for (const [originTract, totalSum] of aggregationMap.entries()) {
-            // Ensure we have valid data before final calculation
-            if (originTract != null && totalSum != null && !isNaN(totalSum)) {
-                 // *** VERIFY FINAL CALCULATION ***
-                 // Apply the * 100 multiplier if required by the index definition
-                const finalIndexValue = totalSum * 100;
-                calculatedIndexValues.set(originTract, finalIndexValue); // Map key is already trimmed string
-            }
-        }
-        console.log(`Processed aggregated results into final map for ${calculatedIndexValues.size} origin tracts.`);
-
-        // 6. Merge calculated values back into the main geojsonData
-        let mergeCount = 0;
-        let featuresProcessed = 0;
-        geojsonData.features.forEach(feature => {
-             featuresProcessed++;
-             if (!feature.properties) feature.properties = {};
-             // Use the same key format as the map (string, trimmed)
-             const featureOriginId = feature.properties['Origin_tract']?.toString().trim();
-
-             if (featureOriginId && calculatedIndexValues.has(featureOriginId)) {
-                feature.properties[indexColName] = calculatedIndexValues.get(featureOriginId);
-                mergeCount++;
-            } else {
-                // Assign null if no calculation result for this tract (important!)
-                feature.properties[indexColName] = null;
-            }
-        });
-        console.log(`Merged activity index values into ${mergeCount} / ${featuresProcessed} features as ${indexColName}.`);
-        if (featuresProcessed > 0 && mergeCount === 0 && calculatedIndexValues.size > 0) {
-            // This condition suggests the aggregation worked, but the merge failed.
-             console.warn(`WARNING: Activity index merge resulted in null for ALL features for index '${indexColName}', even though calculations were performed. Check if 'Origin_tract' values/format match EXACTLY between GeoJSON and Parquet.`);
-        } else if (featuresProcessed > 0 && calculatedIndexValues.size === 0) {
-             console.warn(`WARNING: Activity index aggregation resulted in no data. Check Parquet file content and column names ('${originCol}', '${weightCol}', Z-score columns).`);
-        }
+//     } catch (err) {
+//         console.error(`Error generating residential index:`, err);
+//         const status = err.status || 500;
+//         return new Response(JSON.stringify({ error: err.message || 'Failed to generate residential index.' }), {
+//              status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//         });
+//     }
+// });
 
 
-        // 7. Return Modified GeoJSON
-        return new Response(JSON.stringify(geojsonData), {
-            status: 200, headers: responseHeaders
-        });
+// // POST /api/generate_index (Activity Index - Using Apache Arrow)
+// router.post('/api/generate_index', async (request, env) => {
+//     const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Result is GeoJSON
 
-    } catch (err) {
-        console.error(`Error generating activity index using Arrow JS:`, err);
-        const status = err.status || 500; // Use status from error if available
-        return new Response(JSON.stringify({ error: err.message || 'Failed to generate activity index.' }), {
-             status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
-        });
-    }
-});
+//     try {
+//          let name, selectedVarsJS;
+//          try {
+//              const data = await request.json();
+//              name = data?.name;
+//              selectedVarsJS = data?.variables;
+//         } catch (e) {
+//             return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
+//                 status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
+
+//         const indexBaseName = cleanIndexName(name);
+//         const indexColName = `${indexBaseName}_ACT`;
+
+//         if (!indexBaseName || !selectedVarsJS || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
+//              return new Response(JSON.stringify({ error: 'Index name and at least one variable are required.' }), {
+//                 status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
+//         console.log(`Generating Activity Index (Arrow): ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
+
+//         // 1. Fetch BASE GeoJSON (needed for merging results back)
+//         const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
+//         if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+//              return new Response(JSON.stringify({ error: 'Invalid base map data format.' }), {
+//                 status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
+
+//         // 2. Fetch Parquet Data as ArrayBuffer
+//         console.log(`Fetching Parquet data from R2: ${PARQUET_OBJECT_KEY}`);
+//         const parquetBuffer = await getR2Object(env, R2_BINDING_NAME_TO_USE, PARQUET_OBJECT_KEY, 'arrayBuffer');
+//         if (!parquetBuffer || parquetBuffer.byteLength === 0) {
+//              return new Response(JSON.stringify({ error: 'Failed to load required Parquet data for activity index.' }), {
+//                 status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//             });
+//         }
+//         console.log(`Parquet data fetched successfully (${parquetBuffer.byteLength} bytes).`);
+//         const parquetUint8Array = new Uint8Array(parquetBuffer);
+
+//         // 3. Read Parquet data using Apache Arrow JS
+//         // *** ACTION REQUIRED: Verify the correct Arrow JS API for reading Parquet from a buffer ***
+//         // This is a plausible approach using RecordBatchStreamReader, but double-check Arrow JS docs.
+//         console.log("Attempting to read Parquet buffer with Arrow JS...");
+//         let table;
+//         try {
+//             // This assumes the buffer contains Arrow IPC stream format derived from Parquet.
+//             // Check Arrow JS docs if there's a direct Parquet-to-Table function.
+//             const reader = RecordBatchStreamReader.from(parquetUint8Array);
+//             table = await reader.readAll(); // Reads all batches into memory - consider streaming for huge files
+
+//             if (!table || table.numRows === 0) {
+//                  console.warn(`Arrow JS read the Parquet file ('${PARQUET_OBJECT_KEY}'), but it resulted in an empty table or null.`);
+//                  // Allow proceeding, aggregation will just be empty
+//             } else {
+//                  console.log(`Arrow JS read Parquet into a table with ${table.numRows} rows and ${table.numCols} columns.`);
+//                  // Optional: Log schema for debugging
+//                  console.log("Arrow Table Schema:", table.schema.toString());
+//             }
+
+//         } catch (arrowError) {
+//             console.error(`Apache Arrow failed to read or parse the Parquet buffer from '${PARQUET_OBJECT_KEY}':`, arrowError);
+//             throw new Error(`Failed to process Parquet data using Arrow: ${arrowError.message}`);
+//         }
+
+//         // 4. Aggregate data in JavaScript (Replaces SQL GROUP BY / SUM)
+//         console.log("Aggregating Parquet data using JavaScript...");
+//         const aggregationMap = new Map(); // Map<Origin_tract (string), totalWeightedSum (number)>
+
+//         // *** CRITICAL VERIFICATION NEEDED for column names in PARQUET ***
+//         const originCol = "Origin_tract"; // Verify this exact column name in your Parquet file
+//         const weightCol = "perc_visit";   // Verify this exact column name in your Parquet file
+//         const requiredZscoreDCols = selectedVarsJS.map(jsVar => `${jsVar.replace(/ /g, '')}_zscore_d`); // Verify this naming convention
+
+//         // Check if required columns exist in the table schema (robustness check)
+//         const schema = table.schema;
+//         const requiredCols = [originCol, weightCol, ...requiredZscoreDCols];
+//         const missingCols = requiredCols.filter(colName => !schema.fields.some(field => field.name === colName));
+
+//         if (missingCols.length > 0) {
+//             console.error(`Missing required columns in Parquet file ('${PARQUET_OBJECT_KEY}'): ${missingCols.join(', ')}`);
+//             throw new Error(`Parquet data is missing required columns for calculation: ${missingCols.join(', ')}`);
+//         }
+
+//         // Iterate through Arrow Table rows - handle potential nulls safely
+//         for (const row of table) { // Assumes `table` is iterable
+//             const originTract = row.get(originCol)?.toString().trim(); // Get origin tract, ensure string, trim whitespace
+//             const weight = Number(row.get(weightCol) ?? 0); // Get weight, default null/undefined/NaN to 0
+
+//             // Skip rows with missing origin or zero/invalid weight (can't contribute to weighted sum)
+//             if (!originTract || !weight || isNaN(weight)) {
+//                 continue;
+//             }
+
+//             let rowWeightedSum = 0;
+//             for (const zscoreCol of requiredZscoreDCols) {
+//                 const zscoreValue = Number(row.get(zscoreCol) ?? 0); // Get z-score, default null/undefined/NaN to 0
+//                 // Check zscoreValue is a valid number before multiplying
+//                 if (!isNaN(zscoreValue)) {
+//                     rowWeightedSum += (zscoreValue * weight);
+//                 }
+//             }
+
+//             // Add the sum for this row to the total for its origin tract
+//             const currentSum = aggregationMap.get(originTract) || 0;
+//             aggregationMap.set(originTract, currentSum + rowWeightedSum);
+//         }
+//         console.log(`JavaScript aggregation complete. Found data for ${aggregationMap.size} origin tracts.`);
+
+//         // 5. Process Aggregated Results into Final Index Values Map
+//         const calculatedIndexValues = new Map();
+//         for (const [originTract, totalSum] of aggregationMap.entries()) {
+//             // Ensure we have valid data before final calculation
+//             if (originTract != null && totalSum != null && !isNaN(totalSum)) {
+//                  // *** VERIFY FINAL CALCULATION ***
+//                  // Apply the * 100 multiplier if required by the index definition
+//                 const finalIndexValue = totalSum * 100;
+//                 calculatedIndexValues.set(originTract, finalIndexValue); // Map key is already trimmed string
+//             }
+//         }
+//         console.log(`Processed aggregated results into final map for ${calculatedIndexValues.size} origin tracts.`);
+
+//         // 6. Merge calculated values back into the main geojsonData
+//         let mergeCount = 0;
+//         let featuresProcessed = 0;
+//         geojsonData.features.forEach(feature => {
+//              featuresProcessed++;
+//              if (!feature.properties) feature.properties = {};
+//              // Use the same key format as the map (string, trimmed)
+//              const featureOriginId = feature.properties['Origin_tract']?.toString().trim();
+
+//              if (featureOriginId && calculatedIndexValues.has(featureOriginId)) {
+//                 feature.properties[indexColName] = calculatedIndexValues.get(featureOriginId);
+//                 mergeCount++;
+//             } else {
+//                 // Assign null if no calculation result for this tract (important!)
+//                 feature.properties[indexColName] = null;
+//             }
+//         });
+//         console.log(`Merged activity index values into ${mergeCount} / ${featuresProcessed} features as ${indexColName}.`);
+//         if (featuresProcessed > 0 && mergeCount === 0 && calculatedIndexValues.size > 0) {
+//             // This condition suggests the aggregation worked, but the merge failed.
+//              console.warn(`WARNING: Activity index merge resulted in null for ALL features for index '${indexColName}', even though calculations were performed. Check if 'Origin_tract' values/format match EXACTLY between GeoJSON and Parquet.`);
+//         } else if (featuresProcessed > 0 && calculatedIndexValues.size === 0) {
+//              console.warn(`WARNING: Activity index aggregation resulted in no data. Check Parquet file content and column names ('${originCol}', '${weightCol}', Z-score columns).`);
+//         }
 
 
-// --- Catch-all for 404s ---
-// This should be the LAST route added
-router.all('*', (request) => {
-    // Use itty-router error helper for consistency
-    return error(404, 'API route not found.', { headers: request.corsHeaders });
-});
+//         // 7. Return Modified GeoJSON
+//         return new Response(JSON.stringify(geojsonData), {
+//             status: 200, headers: responseHeaders
+//         });
 
-// --- Main Export for Cloudflare Pages Functions ---
-export async function onRequest(context) {
-    // context includes: request, env, params, waitUntil, next, data
-    const { request, env, ctx } = context; // Use ctx for waitUntil if needed
+//     } catch (err) {
+//         console.error(`Error generating activity index using Arrow JS:`, err);
+//         const status = err.status || 500; // Use status from error if available
+//         return new Response(JSON.stringify({ error: err.message || 'Failed to generate activity index.' }), {
+//              status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+//         });
+//     }
+// });
 
-    try {
-        // itty-router's handle method will manage routing and errors within routes
-        // It returns a Response object or throws an error
-        const response = await router.handle(request, env, ctx);
 
-        // Apply CORS headers stored on the request by the middleware TO THE FINAL RESPONSE
-        // This is crucial because the middleware runs *before* the route handler creates the response
-        const finalHeaders = new Headers(response.headers); // Clone existing headers from the response
+// // --- Catch-all for 404s ---
+// // This should be the LAST route added
+// router.all('*', (request) => {
+//     // Use itty-router error helper for consistency
+//     return error(404, 'API route not found.', { headers: request.corsHeaders });
+// });
 
-        // Merge CORS headers determined by the middleware, but only if they exist
-        Object.entries(request.corsHeaders || {}).forEach(([key, value]) => {
-            // Only set if the middleware determined the header should be set (e.g., Access-Control-Allow-Origin was set)
-            if (value) { // Check if value is truthy (exists and not empty/null)
-                 finalHeaders.set(key, value);
-            }
-        });
+// // --- Main Export for Cloudflare Pages Functions ---
+// export async function onRequest(context) {
+//     // context includes: request, env, params, waitUntil, next, data
+//     const { request, env, ctx } = context; // Use ctx for waitUntil if needed
 
-        // Ensure Content-Type is set correctly (itty-router's json/error helpers usually do this)
-        if (!finalHeaders.has('Content-Type') && response.body && response.status !== 204 && response.status !== 304) {
-             console.warn("Response from route handler missing Content-Type header. Check route handler.");
-             // Defaulting might hide issues in route handlers, maybe remove default?
-             // finalHeaders.set('Content-Type', 'application/json');
-        }
+//     try {
+//         // itty-router's handle method will manage routing and errors within routes
+//         // It returns a Response object or throws an error
+//         const response = await router.handle(request, env, ctx);
 
-        return new Response(response.body, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: finalHeaders // Use the merged headers
-        });
+//         // Apply CORS headers stored on the request by the middleware TO THE FINAL RESPONSE
+//         // This is crucial because the middleware runs *before* the route handler creates the response
+//         const finalHeaders = new Headers(response.headers); // Clone existing headers from the response
 
-    } catch (err) {
-        // Catch unexpected errors *outside* of itty-router's handled routes (e.g., issue in middleware itself)
-        console.error("Unhandled exception during request processing:", err);
-        // Try to apply basic CORS headers even for critical errors
-        const errorHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }; // Fallback CORS
-        return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
-            status: 500,
-            headers: errorHeaders
-        });
-    }
-}
+//         // Merge CORS headers determined by the middleware, but only if they exist
+//         Object.entries(request.corsHeaders || {}).forEach(([key, value]) => {
+//             // Only set if the middleware determined the header should be set (e.g., Access-Control-Allow-Origin was set)
+//             if (value) { // Check if value is truthy (exists and not empty/null)
+//                  finalHeaders.set(key, value);
+//             }
+//         });
+
+//         // Ensure Content-Type is set correctly (itty-router's json/error helpers usually do this)
+//         if (!finalHeaders.has('Content-Type') && response.body && response.status !== 204 && response.status !== 304) {
+//              console.warn("Response from route handler missing Content-Type header. Check route handler.");
+//              // Defaulting might hide issues in route handlers, maybe remove default?
+//              // finalHeaders.set('Content-Type', 'application/json');
+//         }
+
+//         return new Response(response.body, {
+//             status: response.status,
+//             statusText: response.statusText,
+//             headers: finalHeaders // Use the merged headers
+//         });
+
+//     } catch (err) {
+//         // Catch unexpected errors *outside* of itty-router's handled routes (e.g., issue in middleware itself)
+//         console.error("Unhandled exception during request processing:", err);
+//         // Try to apply basic CORS headers even for critical errors
+//         const errorHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }; // Fallback CORS
+//         return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+//             status: 500,
+//             headers: errorHeaders
+//         });
+//     }
+// }
