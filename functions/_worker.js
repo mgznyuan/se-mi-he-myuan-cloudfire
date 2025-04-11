@@ -607,9 +607,8 @@ router.post('/api/login', async (request, env) => {
 //     }
 // }
 
-export default {
-    fetch(request, env, ctx) {
-         console.log("Worker executing (build test)"); // You won't see this if build fails
-         return new Response("Build test - Should not run if build fails", { status: 501 }); // Not Implemented
-     }
- }
+export async function onRequest(context) {
+    console.log("Worker executing (build test)"); // You won't see this if build fails
+    // Return a basic response to satisfy the function signature
+    return new Response("Build test - Should not run if build fails", { status: 501 }); // Not Implemented
+}
