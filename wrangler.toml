@@ -22,10 +22,7 @@ binding = "GEOJSON_BUCKET"
 # Using a separate "-preview" bucket for local dev is recommended but optional.
 bucket_name = "se-mi-health-equity-data-myuan"
 
+main = "functions/_worker-bundled.js"
+
 [build]
 command = "npm run build"
-
-[build.upload]
-format = "modules"
-dir = "functions"
-main = "_worker-bundled.js"
