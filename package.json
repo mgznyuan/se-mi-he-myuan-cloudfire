@@ -14,6 +14,6 @@
     "itty-router": "^4.2.2"
   },
   "scripts": {
-  "build": "esbuild functions/_worker.js --bundle --outfile=dist/_worker.js --format=esm --platform=browser"
-  }
+  "build": "esbuild functions/_worker.js --bundle --format=esm --platform=browser --outfile=functions/_worker-bundled.js"
+}
 }
