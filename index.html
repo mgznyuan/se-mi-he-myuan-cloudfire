@@ -5,14 +5,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Leaflet Core + Plugins -->
-  <!-- Leaflet Core JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-          crossorigin=""></script>
-  <script src="/static/L.Map.Sync.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-image/0.4.0/leaflet-image.min.js" integrity="sha512-4JjMsaVPA9Y9r7Lp3CJEy9Mv6Pj+h5A1LUAz5QyZwvZl6c+Yp2Nq5/NQv71jP0cm5yI14X/6r41xXj+9m5GkPA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="/static/script.js"></script>
+  <!-- KEEP CSS Links in the HEAD -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <!-- Assuming L.Map.Sync.css doesn't exist - you linked to the JS -->
+  <!-- <link rel="stylesheet" href="/static/L.Map.Sync.css"> --> <!-- Add if there's CSS -->
+  <!-- Link to your main CSS file -->
+  <link rel="stylesheet" href="/static/style.css">
 
   <style>
     /* Embedded style for legend icons - can be moved to style.css */
@@ -270,15 +271,19 @@
 </div>
 <!-- End #help-content -->
   <!-- Scripts -->
-  <!-- Leaflet Core JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> -->
-  <!-- Leaflet.Sync Plugin JS - Make sure path is correct -->
+  <!-- Leaflet Core JS (Load First) -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+
+  <!-- Leaflet Plugins (Load After Core Leaflet) -->
   <script src="/static/L.Map.Sync.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-image/0.4.0/leaflet-image.min.js"
+          integrity="sha512-4JjMsaVPA9Y9r7Lp3CJEy9Mv6Pj+h5A1LUAz5QyZwvZl6c+Yp2Nq5/NQv71jP0cm5yI14X/6r41xXj+9m5GkPA=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- Custom Application JS (Load Last) -->
+  <script src="/static/script.js"></script>
 
-
-  <!--  Custom Application JS -->
- <script src="/static/script.js"></script>
 </body>
 </html>

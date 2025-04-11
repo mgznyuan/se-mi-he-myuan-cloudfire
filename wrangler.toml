@@ -1,6 +1,6 @@
 # wrangler.toml
 name = "health-equity-viewer"
-compatibility_date = "2025-04-10"
+compatibility_date = "2025-04-08"
 
 # Pages project – your static site files are in the root
 pages_build_output_dir = "."

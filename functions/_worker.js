@@ -1,278 +1,296 @@
 // functions/_worker.js OR functions/api/[[path]].js (depending on your routing setup)
 
 import { Router, error, json } from 'itty-router';
-import * as duckdb from '@duckdb/duckdb-wasm';
+import { tableFromIPC, RecordBatchStreamReader } from 'apache-arrow'; // <<< --- ADDED: Verify exact Arrow imports needed
+// import bcrypt from 'bcryptjs'; // <<< --- ADD THIS LINE and INSTALL/BUNDLE bcryptjs: `npm install bcryptjs`
 
 // --- Configuration ---
-const GEOJSON_OBJECT_KEY = 'data_residential.geojson'; // Assumes this contains base geometry + _zscore_o columns
-const PARQUET_OBJECT_KEY = 'full_data.parquet';      // Assumes this contains Origin_tract, perc_visit, and _zscore_d columns
+const GEOJSON_OBJECT_KEY = 'data_residential.geojson'; // Base geometry + _zscore_o columns
+const PARQUET_OBJECT_KEY = 'full_data.parquet';      // Origin_tract, perc_visit, + _zscore_d columns
 const R2_BINDING_NAME_TO_USE = 'GEOJSON_BUCKET';     // MUST match wrangler.toml or Pages binding name
 
 // --- Router Setup ---
 const router = Router();
 
-// --- DuckDB WASM Initialization Helper ---
-let dbInstance = null;
-let dbInitializing = null;
+// --- Helper Functions ---
 
-async function getDb(env) {
-    if (dbInitializing) {
-        console.log("DuckDB-WASM initialization already in progress, waiting...");
-        return await dbInitializing;
-    }
-    if (dbInstance) {
-        return dbInstance;
-    }
-
-    console.log("Attempting DuckDB-WASM initialization...");
-    dbInitializing = (async () => {
-        try {
-            const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
-            const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES);
-            const worker_url = URL.createObjectURL(
-                new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' })
-            );
-
-            const worker = new Worker(worker_url);
-            const logger = new duckdb.ConsoleLogger();
-            const db = new duckdb.AsyncDuckDB(logger, worker);
-
-            await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-            URL.revokeObjectURL(worker_url);
-
-            console.log("DuckDB-WASM Initialized Successfully.");
-            dbInstance = db;
-            return db;
-        } catch (err) {
-            console.error("DuckDB-WASM Initialization Failed:", err);
-            dbInstance = null;
-            throw new Error(`Failed to initialize query engine: ${err.message}`);
-        } finally {
-            dbInitializing = null;
-        }
-    })();
-
-    return await dbInitializing;
-}
-
-async function closeDbConnection(conn) {
-    if (conn) {
-        try {
-            await conn.close();
-            // console.log("DuckDB connection closed.");
-        } catch (e) {
-            console.error("Error closing DuckDB connection:", e);
-        }
-    }
-}
-
-// --- Helper Functions (cleanIndexName, verifyPasscode, getR2Object, calculateUnderlyingResidentialIndex) ---
-// Keep your existing helper functions here - they seem generally correct.
-// Make sure verifyPasscode reads `env.PASSCODE_HASH`
-// Make sure getR2Object uses R2_BINDING_NAME_TO_USE
-
-/**
- * Cleans a user-provided name... (keep existing implementation)
- */
 function cleanIndexName(name) {
-    // ... (keep existing implementation) ...
-    if (typeof name !== 'string' || !name) {
+     if (typeof name !== 'string' || !name) {
         return `invalid_name_${Date.now()}`;
     }
+    // Limit length to prevent excessively long column names if needed
     const cleaned = name.trim()
-                       .replace(/\s+/g, '_')
-                       .replace(/[^\w_]/g, '');
-    return cleaned || `invalid_name_${Date.now()}`;
+                       .replace(/\s+/g, '_')       // Replace whitespace with underscore
+                       .replace(/[^\w_]/g, '')    // Remove non-alphanumeric/underscore chars
+                       .substring(0, 50);        // Limit length (e.g., 50 chars)
+    // Ensure it doesn't start with a number or is empty after cleaning
+    return /^[a-zA-Z_]/.test(cleaned) ? cleaned : `idx_${cleaned || Date.now()}`;
 }
 
 /**
- * Securely verifies a provided passcode... (keep existing implementation)
+ * Securely verifies a provided passcode against a stored bcrypt hash.
+ * REQUIRES a bundled bcrypt library (like bcryptjs).
+ * @param {string} providedPasscode - The passcode attempt from the user.
+ * @param {string} storedBcryptHash - The securely stored bcrypt hash from secrets.
+ * @returns {Promise<boolean>} - True if the passcode matches the hash, false otherwise.
  */
-async function verifyPasscode(providedPasscode, storedHash) {
-    // ... (keep existing implementation using crypto.subtle.digest) ...
-     if (!providedPasscode || typeof providedPasscode !== 'string' || !storedHash || typeof storedHash !== 'string') {
+async function verifyPasscode(providedPasscode, storedBcryptHash) {
+    // <<< --- SECURITY FIX: Replaced insecure SHA256 with bcrypt --- >>>
+    if (!providedPasscode || typeof providedPasscode !== 'string' || !storedBcryptHash || typeof storedBcryptHash !== 'string') {
         console.error("verifyPasscode: Invalid input provided.");
         return false;
     }
-    storedHash = storedHash.toLowerCase();
+    // Ensure bcryptjs is available/imported correctly
+    // This relies on you importing and bundling 'bcryptjs'
+    if (typeof bcrypt === 'undefined' || typeof bcrypt.compare !== 'function') {
+         console.error("CRITICAL: bcrypt library (e.g., bcryptjs) is not available or not imported correctly for passcode verification.");
+         // Consider throwing an error here instead? Depends on desired failure mode.
+         return false; // Fail securely
+    }
+
     try {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(providedPasscode);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const calculatedHashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        if (calculatedHashHex === storedHash) {
-            return true;
-        } else {
-            console.log("Passcode verification failed: Hashes do not match.");
-            return false;
+        // bcrypt.compare securely handles the salt embedded in the stored hash
+        const isMatch = await bcrypt.compare(providedPasscode, storedBcryptHash);
+        if (!isMatch) {
+             // Avoid logging failure reasons that might help attackers (e.g., timing differences)
+             console.log("Passcode verification failed.");
         }
+        return isMatch;
     } catch (error) {
-        console.error("Error during passcode hash verification:", error);
-        return false;
+        // Log bcrypt errors, but don't expose details to the client
+        console.error("Error during bcrypt passcode verification:", error);
+        return false; // Return false on any bcrypt error
     }
 }
 
-/**
- * Fetches an object from an R2 bucket binding... (keep existing implementation)
- */
 async function getR2Object(env, bindingName, objectKey, responseType = 'json') {
-    // ... (keep existing implementation checking env[bindingName], object === null, parsing) ...
-     const bucket = env[bindingName];
+    const bucket = env[bindingName];
     if (!bucket) {
-        const errorMsg = `R2 bucket binding '${bindingName}' not configured in Worker environment.`;
+        const errorMsg = `R2 bucket binding '${bindingName}' not configured in Worker environment. Check Pages settings or wrangler.toml.`;
         console.error(errorMsg);
-        throw new Error(errorMsg);
+        throw new Error(errorMsg); // Throw error to be caught upstream
     }
+
     const object = await bucket.get(objectKey);
+
     if (object === null) {
-        const errorMsg = `Required data file '${objectKey}' not found in R2 bucket bound to '${bindingName}'.`;
+        const errorMsg = `Required data file '${objectKey}' not found in R2 bucket bound to '${bindingName}'. Ensure file exists in the bucket.`;
         console.error(errorMsg);
         const err = new Error(errorMsg);
-        err.status = 404;
+        err.status = 404; // Set status for upstream handler
         throw err;
     }
+
      try {
         switch (responseType) {
             case 'json': return await object.json();
             case 'text': return await object.text();
             case 'arrayBuffer': return await object.arrayBuffer();
-            case 'blob': return await object.blob();
-            case 'stream': return object.body;
+            case 'blob': return await object.blob(); // Note: Blob might not be ideal in Worker, ArrayBuffer often better
+            case 'stream': return object.body; // ReadableStream
             default:
-                console.warn(`Unsupported responseType '${responseType}' requested for R2 object '${objectKey}'. Returning raw R2Object.`);
-                return object;
+                 const warnMsg = `Unsupported responseType '${responseType}' requested for R2 object '${objectKey}'.`;
+                 console.warn(warnMsg);
+                 throw new Error(warnMsg); // Throw error for unsupported types
         }
     } catch (e) {
+        // Catch JSON parsing errors etc.
         const errorMsg = `Failed to parse R2 object '${objectKey}' (binding '${bindingName}') as ${responseType}: ${e.message}`;
         console.error(errorMsg, e);
-        throw new Error(errorMsg);
+        throw new Error(errorMsg); // Throw error
     }
 }
 
 /**
- * Calculates the underlying residential index for a given feature... (keep existing implementation)
+ * Calculates the underlying residential index for a given feature based on selected variables.
+ * Assumes variables map to '_zscore_o' columns in feature properties.
  */
 function calculateUnderlyingResidentialIndex(feature, selectedVarsJS) {
-    // ... (keep existing implementation looping selectedVarsJS, mapping to _zscore_o, summing, averaging, * 100) ...
-     if (!feature?.properties || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
-        return null;
+    if (!feature?.properties || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
+        return null; // Return null for invalid input or missing properties
     }
+
     let zscoreSum = 0;
     let zscoreCount = 0;
+
     selectedVarsJS.forEach(jsVar => {
-        // *** Verify this mapping: jsVar (e.g., 'poverty_rate') maps to 'poverty_rate_zscore_o' ***
+        // *** CRITICAL VERIFICATION NEEDED: Verify this naming convention is correct ***
+        // Assumes frontend variable 'poverty_rate' maps to GeoJSON property 'poverty_rate_zscore_o'
         const zscoreColName = `${jsVar.replace(/ /g, '')}_zscore_o`;
+
         if (feature.properties.hasOwnProperty(zscoreColName)) {
             const value = parseFloat(feature.properties[zscoreColName]);
             if (!isNaN(value)) {
                 zscoreSum += value;
                 zscoreCount++;
+            } else {
+                 // console.warn(`Property '${zscoreColName}' for tract ${feature.properties['Origin_tract']} is not a number.`);
             }
+        } else {
+             // console.warn(`Required property '${zscoreColName}' missing for tract ${feature.properties['Origin_tract']}.`);
         }
     });
+
     if (zscoreCount > 0) {
         const averageZscore = zscoreSum / zscoreCount;
+        // Multiply by 100 as per original intent? Verify calculation.
         return averageZscore * 100;
     } else {
+        // Return null if no valid variables were found/summed for this feature
         return null;
     }
 }
 
-
-// --- NEW CORS Middleware ---
+// --- CORS Middleware ---
 const handleCors = (request, env) => {
     const origin = request.headers.get('Origin');
-    // Define allowed origins (use environment variable in production)
-    // Example: set ALLOWED_ORIGINS="https://your-project.pages.dev,http://localhost:8788"
-    const allowedOrigins = env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : ['*']; // Default to wildcard if not set
+    // Use environment variable for allowed origins in production
+    const allowedOriginsEnv = env.ALLOWED_ORIGINS || ""; // Default to empty string if not set
+    // Allow localhost for development if explicitly added or if env var is missing/empty
+    const defaultDevOrigin = "http://127.0.0.1:8788"; // Adjust port if needed via wrangler.toml or CLI arg
+    const allowedOrigins = allowedOriginsEnv ? allowedOriginsEnv.split(',').map(o => o.trim()) : [defaultDevOrigin];
+
+    // Include localhost if running wrangler dev and env var isn't set to block it
+    if (!allowedOriginsEnv && origin && origin.startsWith('http://localhost:')) {
+         allowedOrigins.push(origin); // Allow dynamic localhost ports
+    }
+     if (!allowedOriginsEnv && origin === defaultDevOrigin){
+          if (!allowedOrigins.includes(defaultDevOrigin)) allowedOrigins.push(defaultDevOrigin);
+     }
+
 
     let headers = {
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization', // Allow Content-Type for POST
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization', // Allow Content-Type, potentially Authorization later
         'Access-Control-Max-Age': '86400', // Cache preflight for 1 day
     };
 
-    // Dynamically set Allow-Origin
+    // Set Allow-Origin header dynamically and carefully
     if (origin && allowedOrigins.includes(origin)) {
         headers['Access-Control-Allow-Origin'] = origin;
-    } else if (allowedOrigins.includes('*')) {
-        // Allow '*' only if explicitly configured or as default
-        headers['Access-Control-Allow-Origin'] = '*';
+        headers['Vary'] = 'Origin'; // Important for caching when origin varies
     } else {
-        // Origin not allowed, don't add the header (browser will block)
-        // Or return an error response immediately:
-        // return new Response('CORS Origin Not Allowed', { status: 403 });
+        // If origin is not in the allowed list, DO NOT send Allow-Origin header.
+        // The browser will enforce the block. Sending a fixed '*' can be insecure.
+         if (origin) { // Only log if an origin was actually present
+            console.warn(`CORS: Origin '${origin}' not in allowed list: [${allowedOrigins.join(', ')}]`);
+         }
     }
 
-    // Handle Preflight (OPTIONS) requests
+    // Handle Preflight (OPTIONS) requests immediately
     if (request.method === 'OPTIONS') {
-        return new Response(null, { headers });
+        // Respond only with CORS headers if origin was allowed
+        if (headers['Access-Control-Allow-Origin']) {
+             return new Response(null, { headers });
+        } else {
+             // Origin not allowed, return empty 403 or similar
+             return new Response('CORS Origin Not Allowed', { status: 403 });
+        }
     }
 
-    // Attach CORS headers to the request object for downstream use
-    // This assumes itty-router passes the request object through.
-    // A more robust way might be to wrap the final response.
+    // Attach determined CORS headers to the request context for the final response
     request.corsHeaders = headers;
 };
 
-// Apply CORS middleware to all requests *before* routing
+
+// Apply CORS middleware *before* routing
 router.all('*', handleCors);
+
 
 // --- API Routes ---
 
 // POST /api/login
 router.post('/api/login', async (request, env) => {
-    try {
-        const { passcode } = await request.json();
-        const storedHash = env.PASSCODE_HASH; // Ensure this secret is set!
+    // Ensure response headers are ready even if CORS prevented Allow-Origin header earlier
+    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/json' };
 
-        if (!storedHash) {
-            console.error("Critical: PASSCODE_HASH secret not set in Worker environment.");
-            return error(500, 'Server configuration error.', { headers: request.corsHeaders }); // Use headers from middleware
+    try {
+        let passcode;
+        try {
+             const data = await request.json();
+             passcode = data?.passcode;
+        } catch (e) {
+            return new Response(JSON.stringify({ success: false, error: 'Invalid JSON request body.' }), {
+                status: 400, headers: responseHeaders
+            });
         }
 
+        // <<< --- SECURITY CRITICAL: Ensure PASSCODE_HASH secret contains a BCRYPT HASH --- >>>
+        const storedHash = env.PASSCODE_HASH;
+
+        if (!storedHash) {
+            console.error("CRITICAL: PASSCODE_HASH secret not set or empty in Worker environment.");
+            return new Response(JSON.stringify({ success: false, error: 'Server configuration error.' }), {
+                status: 500, headers: responseHeaders
+            });
+        }
+
+        if (!passcode || typeof passcode !== 'string') {
+             return new Response(JSON.stringify({ success: false, error: 'Passcode required.' }), {
+                status: 400, headers: responseHeaders
+            });
+        }
+
+        // Use the secure bcrypt verification function
         const isValid = await verifyPasscode(passcode, storedHash);
 
         if (isValid) {
-            return json({ success: true }, { headers: request.corsHeaders });
+            // Consider setting a secure, HttpOnly cookie or session token here instead of just success=true
+            console.log("Login successful.");
+            return new Response(JSON.stringify({ success: true }), {
+                status: 200, headers: responseHeaders
+            });
         } else {
+            // Do not reveal if the user exists, just that login failed
+            console.log("Login failed: Invalid passcode.");
             return new Response(JSON.stringify({ success: false, error: 'Invalid passcode.' }), {
                 status: 401, // Unauthorized
-                headers: { ...request.corsHeaders, 'Content-Type': 'application/json' }
+                headers: responseHeaders
             });
         }
     } catch (err) {
+        // Catch unexpected issues
         console.error("Login error:", err);
         return new Response(JSON.stringify({ success: false, error: 'Server error during login.' }), {
-            status: 500,
-            headers: { ...request.corsHeaders, 'Content-Type': 'application/json' }
+            status: 500, headers: responseHeaders
         });
     }
 });
 
 // GET /api/geojson
 router.get('/api/geojson', async (request, env) => {
+    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Correct Content-Type
     try {
         const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
-        if (!geojsonData || !geojsonData.type || !Array.isArray(geojsonData.features)) {
-            console.error("Invalid GeoJSON structure received from R2");
-            return error(500, 'Invalid map data format.', { headers: request.corsHeaders });
+        // Basic validation of GeoJSON structure
+        if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+            console.error("Invalid or incomplete GeoJSON structure received from R2:", GEOJSON_OBJECT_KEY);
+            return new Response(JSON.stringify({ error: 'Invalid map data format received.' }), {
+                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
         }
-        return json(geojsonData, { headers: request.corsHeaders });
+        return new Response(JSON.stringify(geojsonData), { // Ensure stringify for Response body
+            status: 200, headers: responseHeaders
+        });
     } catch (err) {
         console.error("Error in /api/geojson:", err);
-        const status = err.message.includes("not found") ? 404 : 500;
-        return error(status, err.message || 'Error retrieving map data.', { headers: request.corsHeaders });
+        const status = err.status || 500; // Use status from error if set (e.g., 404 from getR2Object)
+        return new Response(JSON.stringify({ error: err.message || 'Error retrieving map data.' }), {
+             status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+        });
     }
 });
 
 // GET /api/get_index_fields
 router.get('/api/get_index_fields', (request, env) => {
+    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/json' };
     // *** CRITICAL VERIFICATION NEEDED ***
-    // Ensure this list EXACTLY matches:
+    // This list MUST EXACTLY match:
     // 1. The `value` attributes in your frontend multi-select <option> tags.
-    // 2. The base names needed to construct column names (e.g., 'poverty_rate' -> 'poverty_rate_zscore_o' / 'poverty_rate_zscore_d')
+    // 2. The base names used to construct column names for calculations
+    //    (e.g., 'poverty_rate' used to find 'poverty_rate_zscore_o' in GeoJSON
+    //     and 'poverty_rate_zscore_d' in Parquet).
+    // Remove any fields NOT intended for custom index selection.
      const indexFields = [
         'no_high_school_rate', 'no_car_rate', 'total_no_work_rate',
         'poverty_rate', 'renter_rate', 'total_no_ins_rate', 'sdwalk_length_m',
@@ -280,192 +298,258 @@ router.get('/api/get_index_fields', (request, env) => {
         'bike_per_cap', 'healthy_retailer', 'pharma', 'clinic', 'healthy_ret_cap',
         'pharma_cap', 'clinic_cap', 'PRE1960PCT', 'OZONE', 'PM25', 'PNPL', 'PRMP',
         'PTSDF', 'DSLPM', 'unhealthy_ret_cap', 'liq_tab_cap', 'food_retailer_cap',
-        'Obesity', 'Diabetes', 'High Blood Pressure', 'Coronary Heart Disease',
-        'High Cholesterol', 'Depression', 'Stroke', 'Annual Checkup', 'Physical Inactivity',
+        // Verify if Health Outcomes are Z-scored and available for index calculation
+        // 'Obesity', 'Diabetes', 'High Blood Pressure', 'Coronary Heart Disease',
+        // 'High Cholesterol', 'Depression', 'Stroke', 'Annual Checkup', 'Physical Inactivity',
+        // Verify if pre-defined indices should be selectable components for *new* custom indices
         'ndi', 'uei', 'hoi',
-        'andi_final', 'auie_final', 'ahoi_final' // Verify if these are selectable for *custom* index generation
+        // 'andi_final', 'auie_final', 'ahoi_final' // Likely NOT selectable for custom index
     ];
-    console.log("Returning index fields:", indexFields); // Log for verification
+    console.log("Returning index fields:", indexFields);
+    // Use itty-router's json helper which handles stringify and content-type
     return json(indexFields, { headers: request.corsHeaders });
 });
 
 
 // POST /api/generate_residential_index
 router.post('/api/generate_residential_index', async (request, env) => {
+    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Result is GeoJSON
     try {
-        const { name, variables: selectedVarsJS } = await request.json();
-        const indexBaseName = cleanIndexName(name);
-        const indexColName = `${indexBaseName}_RES`;
+        let name, selectedVarsJS;
+         try {
+             const data = await request.json();
+             name = data?.name;
+             selectedVarsJS = data?.variables;
+        } catch (e) {
+            return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
+                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
+        }
 
-        if (!indexBaseName || !selectedVarsJS || !selectedVarsJS.length) {
-            return error(400, 'Index name and variables required.', { headers: request.corsHeaders });
+        const indexBaseName = cleanIndexName(name); // Clean the user-provided name
+        const indexColName = `${indexBaseName}_RES`; // Construct the final column name
+
+        if (!indexBaseName || !selectedVarsJS || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
+             return new Response(JSON.stringify({ error: 'Index name and at least one variable are required.' }), {
+                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
         }
         console.log(`Generating Residential Index: ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
 
         // 1. Fetch Base GeoJSON
         const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
-        if (!geojsonData || !Array.isArray(geojsonData.features)) {
-            return error(500, 'Failed to load base map data.', { headers: request.corsHeaders });
+        if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+             return new Response(JSON.stringify({ error: 'Invalid base map data format.' }), {
+                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
         }
 
-        // 2. *** Calculate Residential Index using the helper function ***
+        // 2. Calculate Residential Index for each feature
         let calculationCount = 0;
+        let featuresProcessed = 0;
         geojsonData.features.forEach(feature => {
-            if (!feature.properties) feature.properties = {}; // Ensure properties object exists
+            featuresProcessed++;
+            // Ensure properties object exists (safer)
+            if (!feature.properties) feature.properties = {};
 
-            // Call the helper function to calculate the index for this feature
             const indexValue = calculateUnderlyingResidentialIndex(feature, selectedVarsJS);
-
-            // Assign the calculated value (or null if calculation failed)
-            feature.properties[indexColName] = indexValue;
+            feature.properties[indexColName] = indexValue; // Assign calculated value (can be null)
             if (indexValue !== null) calculationCount++;
         });
-        console.log(`Calculated residential index for ${calculationCount}/${geojsonData.features.length} features as ${indexColName}.`);
-         if (calculationCount === 0 && geojsonData.features.length > 0) {
-             console.warn("Residential index calculation resulted in null for all features. Check if GeoJSON contains required '_zscore_o' columns for selected variables.");
-         }
+
+        console.log(`Calculated residential index for ${calculationCount} / ${featuresProcessed} features as ${indexColName}.`);
+        if (featuresProcessed > 0 && calculationCount === 0) {
+             console.warn(`WARNING: Residential index calculation resulted in null for ALL features for index '${indexColName}'. Check required '_zscore_o' columns for [${selectedVarsJS.join(', ')}] in GeoJSON (${GEOJSON_OBJECT_KEY}).`);
+        }
 
         // 3. Return Modified GeoJSON
-        return json(geojsonData, { headers: request.corsHeaders });
+        return new Response(JSON.stringify(geojsonData), {
+            status: 200, headers: responseHeaders
+        });
 
     } catch (err) {
         console.error(`Error generating residential index:`, err);
-        const status = err.message.includes("not found") ? 404 : 500;
-        return error(status, err.message || 'Failed to generate residential index.', { headers: request.corsHeaders });
+        const status = err.status || 500;
+        return new Response(JSON.stringify({ error: err.message || 'Failed to generate residential index.' }), {
+             status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+        });
     }
 });
 
 
-// POST /api/generate_index (Activity Index - Using DuckDB)
+// POST /api/generate_index (Activity Index - Using Apache Arrow)
 router.post('/api/generate_index', async (request, env) => {
-    let db = null;
-    let connection = null;
-    const parquetFileName = `data.parquet`; // Define here for use in finally block if needed
+    const responseHeaders = { ...(request.corsHeaders || {}), 'Content-Type': 'application/geo+json' }; // Result is GeoJSON
 
     try {
-        const { name, variables: selectedVarsJS } = await request.json();
+         let name, selectedVarsJS;
+         try {
+             const data = await request.json();
+             name = data?.name;
+             selectedVarsJS = data?.variables;
+        } catch (e) {
+            return new Response(JSON.stringify({ error: 'Invalid JSON request body.' }), {
+                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
+        }
+
         const indexBaseName = cleanIndexName(name);
         const indexColName = `${indexBaseName}_ACT`;
 
-        if (!indexBaseName || !selectedVarsJS || !selectedVarsJS.length) {
-            return error(400, 'Index name and variables required.', { headers: request.corsHeaders });
+        if (!indexBaseName || !selectedVarsJS || !Array.isArray(selectedVarsJS) || selectedVarsJS.length === 0) {
+             return new Response(JSON.stringify({ error: 'Index name and at least one variable are required.' }), {
+                status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
         }
-        console.log(`Generating Activity Index: ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
+        console.log(`Generating Activity Index (Arrow): ${indexColName} for variables: ${selectedVarsJS.join(', ')}`);
 
         // 1. Fetch BASE GeoJSON (needed for merging results back)
         const geojsonData = await getR2Object(env, R2_BINDING_NAME_TO_USE, GEOJSON_OBJECT_KEY, 'json');
-        if (!geojsonData || !Array.isArray(geojsonData.features)) {
-            return error(500, 'Failed to load base map data.', { headers: request.corsHeaders });
+        if (!geojsonData || geojsonData.type !== 'FeatureCollection' || !Array.isArray(geojsonData.features)) {
+             return new Response(JSON.stringify({ error: 'Invalid base map data format.' }), {
+                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
         }
 
         // 2. Fetch Parquet Data as ArrayBuffer
+        console.log(`Fetching Parquet data from R2: ${PARQUET_OBJECT_KEY}`);
         const parquetBuffer = await getR2Object(env, R2_BINDING_NAME_TO_USE, PARQUET_OBJECT_KEY, 'arrayBuffer');
         if (!parquetBuffer || parquetBuffer.byteLength === 0) {
-            return error(500, 'Failed to load Parquet data for activity index.', { headers: request.corsHeaders });
+             return new Response(JSON.stringify({ error: 'Failed to load required Parquet data for activity index.' }), {
+                status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+            });
         }
-
-        // 3. Initialize DuckDB-WASM & Connect
-        db = await getDb(env);
-        connection = await db.connect();
-
-        // 4. Register Parquet Buffer
+        console.log(`Parquet data fetched successfully (${parquetBuffer.byteLength} bytes).`);
         const parquetUint8Array = new Uint8Array(parquetBuffer);
-        await db.registerFileBuffer(parquetFileName, parquetUint8Array);
-        console.log("Parquet buffer registered with DuckDB as", parquetFileName);
 
-        // 5. Construct the SQL Query
-        // *** CRITICAL VERIFICATION NEEDED for column names ***
-        const requiredZscoreDCols = selectedVarsJS.map(jsVar => `${jsVar.replace(/ /g, '')}_zscore_d`); // e.g., 'poverty_rate_zscore_d'
-        const weightCol = `"perc_visit"`; // Verify this column name in Parquet
-        const originCol = `"Origin_tract"`; // Verify this column name in Parquet
+        // 3. Read Parquet data using Apache Arrow JS
+        // *** ACTION REQUIRED: Verify the correct Arrow JS API for reading Parquet from a buffer ***
+        // This is a plausible approach using RecordBatchStreamReader, but double-check Arrow JS docs.
+        console.log("Attempting to read Parquet buffer with Arrow JS...");
+        let table;
+        try {
+            // This assumes the buffer contains Arrow IPC stream format derived from Parquet.
+            // Check Arrow JS docs if there's a direct Parquet-to-Table function.
+            const reader = RecordBatchStreamReader.from(parquetUint8Array);
+            table = await reader.readAll(); // Reads all batches into memory - consider streaming for huge files
 
-        // Filter out variables that might not have a corresponding _zscore_d column (optional but safer)
-        // This requires knowing the actual Parquet schema, which we don't have here. Assuming all exist for now.
-        const weightedSumExprParts = requiredZscoreDCols.map(col => `"${col}"::DOUBLE * ${weightCol}::DOUBLE`);
+            if (!table || table.numRows === 0) {
+                 console.warn(`Arrow JS read the Parquet file ('${PARQUET_OBJECT_KEY}'), but it resulted in an empty table or null.`);
+                 // Allow proceeding, aggregation will just be empty
+            } else {
+                 console.log(`Arrow JS read Parquet into a table with ${table.numRows} rows and ${table.numCols} columns.`);
+                 // Optional: Log schema for debugging
+                 console.log("Arrow Table Schema:", table.schema.toString());
+            }
 
-        if (weightedSumExprParts.length === 0) {
-            await closeDbConnection(connection); connection = null;
-            return error(400, 'No valid variables selected or mapping failed.', { headers: request.corsHeaders });
+        } catch (arrowError) {
+            console.error(`Apache Arrow failed to read or parse the Parquet buffer from '${PARQUET_OBJECT_KEY}':`, arrowError);
+            throw new Error(`Failed to process Parquet data using Arrow: ${arrowError.message}`);
         }
-        const weightedSumSql = weightedSumExprParts.join(' + ');
 
-        const query = `
-            SELECT
-                ${originCol}::VARCHAR AS Origin_tract, -- Ensure string type
-                SUM(${weightedSumSql}) AS total_weighted_sum
-            FROM read_parquet('${parquetFileName}')
-            WHERE ${weightCol} IS NOT NULL AND ${weightCol} != 0 -- Filter invalid weights
-            GROUP BY ${originCol}
-        `;
-        console.log("Executing DuckDB query for activity index...");
+        // 4. Aggregate data in JavaScript (Replaces SQL GROUP BY / SUM)
+        console.log("Aggregating Parquet data using JavaScript...");
+        const aggregationMap = new Map(); // Map<Origin_tract (string), totalWeightedSum (number)>
 
-        // 6. Execute Query and Fetch Results
-        const arrowResult = await connection.query(query);
-        const resultsArray = arrowResult.toArray();
-        console.log(`DuckDB query finished. Received ${resultsArray.length} results.`);
+        // *** CRITICAL VERIFICATION NEEDED for column names in PARQUET ***
+        const originCol = "Origin_tract"; // Verify this exact column name in your Parquet file
+        const weightCol = "perc_visit";   // Verify this exact column name in your Parquet file
+        const requiredZscoreDCols = selectedVarsJS.map(jsVar => `${jsVar.replace(/ /g, '')}_zscore_d`); // Verify this naming convention
 
-        // 7. Process Results into a Map
+        // Check if required columns exist in the table schema (robustness check)
+        const schema = table.schema;
+        const requiredCols = [originCol, weightCol, ...requiredZscoreDCols];
+        const missingCols = requiredCols.filter(colName => !schema.fields.some(field => field.name === colName));
+
+        if (missingCols.length > 0) {
+            console.error(`Missing required columns in Parquet file ('${PARQUET_OBJECT_KEY}'): ${missingCols.join(', ')}`);
+            throw new Error(`Parquet data is missing required columns for calculation: ${missingCols.join(', ')}`);
+        }
+
+        // Iterate through Arrow Table rows - handle potential nulls safely
+        for (const row of table) { // Assumes `table` is iterable
+            const originTract = row.get(originCol)?.toString().trim(); // Get origin tract, ensure string, trim whitespace
+            const weight = Number(row.get(weightCol) ?? 0); // Get weight, default null/undefined/NaN to 0
+
+            // Skip rows with missing origin or zero/invalid weight (can't contribute to weighted sum)
+            if (!originTract || !weight || isNaN(weight)) {
+                continue;
+            }
+
+            let rowWeightedSum = 0;
+            for (const zscoreCol of requiredZscoreDCols) {
+                const zscoreValue = Number(row.get(zscoreCol) ?? 0); // Get z-score, default null/undefined/NaN to 0
+                // Check zscoreValue is a valid number before multiplying
+                if (!isNaN(zscoreValue)) {
+                    rowWeightedSum += (zscoreValue * weight);
+                }
+            }
+
+            // Add the sum for this row to the total for its origin tract
+            const currentSum = aggregationMap.get(originTract) || 0;
+            aggregationMap.set(originTract, currentSum + rowWeightedSum);
+        }
+        console.log(`JavaScript aggregation complete. Found data for ${aggregationMap.size} origin tracts.`);
+
+        // 5. Process Aggregated Results into Final Index Values Map
         const calculatedIndexValues = new Map();
-        for (const row of resultsArray) {
-            const originTract = row.Origin_tract;
-            const totalSum = row.total_weighted_sum;
-
+        for (const [originTract, totalSum] of aggregationMap.entries()) {
+            // Ensure we have valid data before final calculation
             if (originTract != null && totalSum != null && !isNaN(totalSum)) {
-                // *** VERIFY FINAL CALCULATION ***
-                // Formula seems to be Sum(weight * I_ik) * 100, where I_ik are the zscore_d values.
-                // The SQL calculates Sum(weight * zscore_d). So multiply the result by 100.
+                 // *** VERIFY FINAL CALCULATION ***
+                 // Apply the * 100 multiplier if required by the index definition
                 const finalIndexValue = totalSum * 100;
-                calculatedIndexValues.set(originTract.toString().trim(), finalIndexValue);
+                calculatedIndexValues.set(originTract, finalIndexValue); // Map key is already trimmed string
             }
         }
-        console.log(`Processed results into map for ${calculatedIndexValues.size} origin tracts.`);
+        console.log(`Processed aggregated results into final map for ${calculatedIndexValues.size} origin tracts.`);
 
-        // 8. Merge calculated values into the main geojsonData
+        // 6. Merge calculated values back into the main geojsonData
         let mergeCount = 0;
+        let featuresProcessed = 0;
         geojsonData.features.forEach(feature => {
-            if (!feature.properties) feature.properties = {};
-            const featureOriginId = feature.properties['Origin_tract']?.toString().trim(); // Match lookup format
-            if (featureOriginId && calculatedIndexValues.has(featureOriginId)) {
+             featuresProcessed++;
+             if (!feature.properties) feature.properties = {};
+             // Use the same key format as the map (string, trimmed)
+             const featureOriginId = feature.properties['Origin_tract']?.toString().trim();
+
+             if (featureOriginId && calculatedIndexValues.has(featureOriginId)) {
                 feature.properties[indexColName] = calculatedIndexValues.get(featureOriginId);
                 mergeCount++;
             } else {
-                feature.properties[indexColName] = null; // Assign null if no calculation result
+                // Assign null if no calculation result for this tract (important!)
+                feature.properties[indexColName] = null;
             }
         });
-        console.log(`Merged activity index values into ${mergeCount}/${geojsonData.features.length} features as ${indexColName}.`);
+        console.log(`Merged activity index values into ${mergeCount} / ${featuresProcessed} features as ${indexColName}.`);
+        if (featuresProcessed > 0 && mergeCount === 0 && calculatedIndexValues.size > 0) {
+            // This condition suggests the aggregation worked, but the merge failed.
+             console.warn(`WARNING: Activity index merge resulted in null for ALL features for index '${indexColName}', even though calculations were performed. Check if 'Origin_tract' values/format match EXACTLY between GeoJSON and Parquet.`);
+        } else if (featuresProcessed > 0 && calculatedIndexValues.size === 0) {
+             console.warn(`WARNING: Activity index aggregation resulted in no data. Check Parquet file content and column names ('${originCol}', '${weightCol}', Z-score columns).`);
+        }
 
-        // 9. Cleanup DuckDB Connection (File buffer should detach on connection close/worker end)
-        await closeDbConnection(connection);
-        connection = null; // Prevent reuse in finally block if already closed
-        console.log("DuckDB connection closed.");
 
-        // 10. Return Modified GeoJSON
-        return json(geojsonData, { headers: request.corsHeaders });
+        // 7. Return Modified GeoJSON
+        return new Response(JSON.stringify(geojsonData), {
+            status: 200, headers: responseHeaders
+        });
 
     } catch (err) {
-        console.error(`Error generating activity index using DuckDB:`, err);
-        const status = err.message?.includes("not found") ? 404 : (err.status || 500);
-        return error(status, err.message || 'Failed to generate activity index.', { headers: request.corsHeaders });
-    } finally {
-        // Ensure connection is closed if something went wrong after opening it
-        if (connection) {
-            console.log("Closing DuckDB connection in finally block.");
-            await closeDbConnection(connection);
-        }
-        // Optionally try to drop the file buffer if the API exists and is needed
-        // if (db && typeof db.dropFile === 'function') {
-        //    try { await db.dropFile(parquetFileName); } catch(e){ console.error("Error dropping file buffer:", e)}
-        // }
+        console.error(`Error generating activity index using Arrow JS:`, err);
+        const status = err.status || 500; // Use status from error if available
+        return new Response(JSON.stringify({ error: err.message || 'Failed to generate activity index.' }), {
+             status: status, headers: { ...responseHeaders, 'Content-Type': 'application/json' } // Error is JSON
+        });
     }
 });
 
 
 // --- Catch-all for 404s ---
-// Ensure this comes *after* all other routes
+// This should be the LAST route added
 router.all('*', (request) => {
-     // Use the headers from the CORS middleware if available
-    const headers = request.corsHeaders || { 'Content-Type': 'application/json' };
-    return new Response(JSON.stringify({ error: 'Not Found' }), { status: 404, headers });
+    // Use itty-router error helper for consistency
+    return error(404, 'API route not found.', { headers: request.corsHeaders });
 });
 
 // --- Main Export for Cloudflare Pages Functions ---
@@ -474,37 +558,40 @@ export async function onRequest(context) {
     const { request, env, ctx } = context; // Use ctx for waitUntil if needed
 
     try {
-        // Add a default CORS header object in case CORS middleware fails early
-        request.corsHeaders = request.corsHeaders || { 'Access-Control-Allow-Origin': '*' }; // Basic fallback
-
-        // Handle the request with the router
+        // itty-router's handle method will manage routing and errors within routes
+        // It returns a Response object or throws an error
         const response = await router.handle(request, env, ctx);
 
-        // *** IMPORTANT: Apply CORS headers to the FINAL response ***
-        // The middleware only attached them to the *request*. We need them on the *response*.
-        const finalHeaders = new Headers(response.headers); // Clone existing headers
-        Object.entries(request.corsHeaders).forEach(([key, value]) => {
-            finalHeaders.set(key, value);
+        // Apply CORS headers stored on the request by the middleware TO THE FINAL RESPONSE
+        // This is crucial because the middleware runs *before* the route handler creates the response
+        const finalHeaders = new Headers(response.headers); // Clone existing headers from the response
+
+        // Merge CORS headers determined by the middleware, but only if they exist
+        Object.entries(request.corsHeaders || {}).forEach(([key, value]) => {
+            // Only set if the middleware determined the header should be set (e.g., Access-Control-Allow-Origin was set)
+            if (value) { // Check if value is truthy (exists and not empty/null)
+                 finalHeaders.set(key, value);
+            }
         });
 
-        // Ensure Content-Type if missing (optional, depends on router responses)
-        if (!finalHeaders.has('Content-Type') && response.status !== 204 && response.status !== 304) {
-             finalHeaders.set('Content-Type', 'application/json'); // Default assumption
+        // Ensure Content-Type is set correctly (itty-router's json/error helpers usually do this)
+        if (!finalHeaders.has('Content-Type') && response.body && response.status !== 204 && response.status !== 304) {
+             console.warn("Response from route handler missing Content-Type header. Check route handler.");
+             // Defaulting might hide issues in route handlers, maybe remove default?
+             // finalHeaders.set('Content-Type', 'application/json');
         }
 
-        // Return the response with combined headers
         return new Response(response.body, {
             status: response.status,
             statusText: response.statusText,
-            headers: finalHeaders
+            headers: finalHeaders // Use the merged headers
         });
 
     } catch (err) {
-        // Catch unexpected errors (outside router handling)
+        // Catch unexpected errors *outside* of itty-router's handled routes (e.g., issue in middleware itself)
         console.error("Unhandled exception during request processing:", err);
-        // Ensure CORS headers on critical error responses too
-        const errorHeaders = request.corsHeaders || { 'Access-Control-Allow-Origin': '*' };
-        errorHeaders['Content-Type'] = 'application/json';
+        // Try to apply basic CORS headers even for critical errors
+        const errorHeaders = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }; // Fallback CORS
         return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
             status: 500,
             headers: errorHeaders

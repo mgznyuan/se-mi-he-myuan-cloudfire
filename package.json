@@ -7,10 +7,13 @@
     "deploy": "npx wrangler pages deploy ."
   },
   "devDependencies": {
-    "wrangler": "^4.9.1"
+    "wrangler": "^4.10.0"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.29.0",
+    "apache-arrow": "^19.0.1",
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
     "itty-router": "^4.2.2"
-  },
+  }
 }
