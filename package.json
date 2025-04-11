@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npx wrangler pages dev public",
-    "deploy": "npx wrangler pages deploy public"
+    "dev": "npx wrangler pages dev .",
+    "deploy": "npx wrangler pages deploy ."
   },
   "devDependencies": {
     "wrangler": "^4.9.1"
