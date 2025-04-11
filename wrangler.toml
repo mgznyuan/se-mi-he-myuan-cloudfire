@@ -2,9 +2,13 @@
 name = "health-equity-viewer"
 compatibility_date = "2025-04-08"
 
-# Pages project – your static site files are in the root
+# Pages project – static site files are in the root
 pages_build_output_dir = "."
 
 [[r2_buckets]]
 binding = "GEOJSON_BUCKET"
 bucket_name = "se-mi-health-equity-data-myuan"
+
+[build.upload]
+format = "modules"
+exclude = ["bcryptjs", "itty-router", "apache-arrow"]
