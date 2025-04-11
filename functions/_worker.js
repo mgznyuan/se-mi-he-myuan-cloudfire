@@ -2,8 +2,7 @@
 
 import { Router, error, json } from 'itty-router';
 import { tableFromIPC, RecordBatchStreamReader } from 'apache-arrow'; // <<< --- ADDED: Verify exact Arrow imports needed
-// import bcrypt from 'bcryptjs'; // <<< --- ADD THIS LINE and INSTALL/BUNDLE bcryptjs: `npm install bcryptjs`
-
+import bcrypt from 'bcryptjs'; 
 // --- Configuration ---
 const GEOJSON_OBJECT_KEY = 'data_residential.geojson'; // Base geometry + _zscore_o columns
 const PARQUET_OBJECT_KEY = 'full_data.parquet';      // Origin_tract, perc_visit, + _zscore_d columns
