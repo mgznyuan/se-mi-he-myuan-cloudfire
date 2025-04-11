@@ -1,17 +1,17 @@
 // functions/_worker.js OR functions/api/[[path]].js (depending on your routing setup)
 // Instead of: import { Router, error, json } from 'itty-router';
-import Itty from 'itty-router'; // Then use Itty.Router, etc. (WRONG for runtime, build test only)
+// Try: import Itty from 'itty-router'; // Then use Itty.Router, etc. (WRONG for runtime, build test only)
 
 // Instead of: import { tableFromIPC, RecordBatchStreamReader } from 'apache-arrow';
-import * as Arrow from 'apache-arrow'; // Build test only
+// Try: import * as Arrow from 'apache-arrow'; // Build test only
 
 // Instead of: import bcrypt from 'bcryptjs';
-import * as Bcrypt from 'bcryptjs'; // Build test only
+// Try: import * as Bcrypt from 'bcryptjs'; // Build test only
 
 
-// import { Router, error, json } from 'itty-router';
-// import { tableFromIPC, RecordBatchStreamReader } from 'apache-arrow'; // <<< --- ADDED: Verify exact Arrow imports needed
-// import bcrypt from 'bcryptjs'; 
+import { Router, error, json } from 'itty-router';
+import { tableFromIPC, RecordBatchStreamReader } from 'apache-arrow'; // <<< --- ADDED: Verify exact Arrow imports needed
+import bcrypt from 'bcryptjs'; 
 // --- Configuration ---
 const GEOJSON_OBJECT_KEY = 'data_residential.geojson'; // Base geometry + _zscore_o columns
 const PARQUET_OBJECT_KEY = 'full_data.parquet';      // Origin_tract, perc_visit, + _zscore_d columns
